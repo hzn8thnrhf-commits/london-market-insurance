@@ -103,5 +103,23 @@ window.LMA_GLOSSARY = [
   { term: 'Velonetic', def: 'The operator of the London market’s central processing bureau (formerly Xchanging), which checks, signs and settles market transactions.' },
   { term: 'Written line', def: 'The share of a risk an underwriter originally commits to on the slip — before any signing down.' },
   { term: 'Written premium', def: 'Premium recognised when a contract is bound — the full contract price, regardless of how much cover has yet been provided.' },
-  { term: 'Year of account', def: 'The Lloyd’s accounting year to which a policy belongs (by inception date), whose capital providers take the resulting profit or loss.' }
+  { term: 'Year of account', def: 'The Lloyd’s accounting year to which a policy belongs (by inception date), whose capital providers take the resulting profit or loss.' },
+  { term: 'Adverse development cover', def: 'Retrospective reinsurance attaching at (or near) booked reserves, protecting against prior-year claims deterioration up to a limit — excess of loss on reserves.' },
+  { term: 'Basis risk', def: 'The mismatch between an index-based payout (parametric or industry-loss trigger) and the buyer’s actual loss — cover can pay too little, too much, or not at all.' },
+  { term: 'Broker facility', def: 'A pre-arranged commitment of follow capacity to a share of qualifying risks a broker places, usually in exchange for enhanced commission.' },
+  { term: 'Catastrophe bond', def: 'A security whose investors lose principal (held in a collateral trust) if a defined catastrophe occurs, providing the sponsor with pre-funded, credit-risk-free protection.' },
+  { term: 'Consortium fee / commission override', def: 'Payment a consortium leader or capacity manager earns from followers for underwriting on behalf of their combined capacity.' },
+  { term: 'Deficit carry-forward', def: 'A profit-commission clause requiring past losses to be recouped before profit share is payable again — a key alignment tool in delegated and framework arrangements.' },
+  { term: 'Framework agreement', def: 'The long-term contract between a managing general underwriter and its balance-sheet carrier(s), governing delegated classes, guidelines, data rights and economics.' },
+  { term: 'Fronting', def: 'A licensed, rated insurer issuing policies and reinsuring most or all of the risk to the capital that actually wants it (a captive, fund or unrated reinsurer), for a fronting fee — while remaining fully liable to policyholders.' },
+  { term: 'Loss portfolio transfer', def: 'A retrospective transaction transferring booked reserves for past business to a (legacy) reinsurer for a premium approximately equal to their discounted value.' },
+  { term: 'Managing general underwriter (MGU)', def: 'A full-scale underwriting business writing on other carriers’ paper under framework agreements — paid by commissions and profit share rather than holding risk capital.' },
+  { term: 'Profit commission (framework)', def: 'A share of underwriting profit paid by a carrier to the underwriting business that produced it, usually above a threshold and often with deficit carry-forward.' },
+  { term: 'Sidecar', def: 'A collateralised special-purpose vehicle through which investors take a quota share of a sponsor’s book for a period, with the sponsor typically earning fees and profit overrides.' },
+  { term: 'Significant risk transfer', def: 'Structures (recognised by banking regulators) in which insurers or funds protect tranches of bank loan portfolios, reducing the bank’s regulatory capital.' },
+  { term: 'Smart follower', def: 'A carrier or vehicle that follows chosen leads systematically (by rule or algorithm) with a minimal cost base, competing on expense ratio rather than risk selection.' },
+  { term: 'Tax liability insurance', def: 'Cover for a specific, identified tax position failing on challenge — underwritten from legal opinions; a known-risk transactional product.' },
+  { term: 'Trapped collateral', def: 'Collateral held in trust against potential loss development after an event, unavailable to investors for redeployment — a drag that slows alternative capital’s return after catastrophes.' },
+  { term: 'Warranty & indemnity insurance', def: 'Cover paying a company buyer for breaches of the seller’s warranties discovered after completion (in the United States: representations & warranties insurance).' }
 ];
+window.LMA_GLOSSARY.sort(function (a, b) { return a.term.localeCompare(b.term); });
