@@ -50,6 +50,20 @@
   function app() { return document.getElementById('app'); }
   function keyFor(mod, lesson) { return mod.id + '/' + lesson.id; }
 
+  function plainText(html) {
+    var d = document.createElement('div'); d.innerHTML = html; return d.textContent || '';
+  }
+
+  function currentStreak() {
+    var days = {};
+    state.studyDays.forEach(function (d) { days[d] = true; });
+    var n = 0, d = new Date();
+    function iso(x) { return x.toISOString().slice(0, 10); }
+    if (!days[iso(d)]) d.setDate(d.getDate() - 1); // streak alive if studied yesterday
+    while (days[iso(d)]) { n++; d.setDate(d.getDate() - 1); }
+    return n;
+  }
+
   function findModule(id) {
     for (var i = 0; i < MODULES.length; i++) if (MODULES[i].id === id) return MODULES[i];
     return null;
@@ -77,37 +91,88 @@
 
   /* ---------- achievements ---------- */
 
+  function passedQuizCount() {
+    var n = 0;
+    for (var k in state.quizBest) if (state.quizBest[k].pct >= 70) n++;
+    return n;
+  }
+  function modulesMastered() {
+    var n = 0;
+    MODULES.forEach(function (m) { if (moduleProgress(m).done) n++; });
+    return n;
+  }
+  function lessonsReadCount() { return Object.keys(state.lessonsRead).length; }
+
   var ACHIEVEMENTS = [
     { id: 'first-lesson', icon: '🌱', name: 'First Steps',
       desc: 'Complete your first lesson.',
-      test: function () { return Object.keys(state.lessonsRead).length >= 1; } },
+      test: function () { return lessonsReadCount() >= 1; } },
     { id: 'first-quiz', icon: '✅', name: 'Signed Line',
       desc: 'Pass your first quiz with 70% or more.',
-      test: function () { return anyQuizAtLeast(70, 1); } },
+      test: function () { return passedQuizCount() >= 1; } },
+    { id: 'lessons-10', icon: '📖', name: 'Bookworm',
+      desc: 'Read 10 lessons.',
+      test: function () { return lessonsReadCount() >= 10; },
+      prog: function () { return [Math.min(lessonsReadCount(), 10), 10]; } },
+    { id: 'lessons-25', icon: '📚', name: 'Deep Diver',
+      desc: 'Read 25 lessons.',
+      test: function () { return lessonsReadCount() >= 25; },
+      prog: function () { return [Math.min(lessonsReadCount(), 25), 25]; } },
+    { id: 'quiz-10', icon: '🖊️', name: 'Ten Lines Signed',
+      desc: 'Pass 10 quizzes.',
+      test: function () { return passedQuizCount() >= 10; },
+      prog: function () { return [Math.min(passedQuizCount(), 10), 10]; } },
+    { id: 'quiz-30', icon: '🏛️', name: 'Market Veteran',
+      desc: 'Pass 30 quizzes.',
+      test: function () { return passedQuizCount() >= 30; },
+      prog: function () { return [Math.min(passedQuizCount(), 30), 30]; } },
     { id: 'perfect', icon: '🎯', name: 'Clean Slip',
       desc: 'Score 100% on any quiz.',
       test: function () { return state.perfectCount >= 1; } },
     { id: 'perfect-5', icon: '💎', name: 'Lead Line',
-      desc: 'Score 100% on five different occasions.',
-      test: function () { return state.perfectCount >= 5; } },
+      desc: 'Score 100% on five occasions.',
+      test: function () { return state.perfectCount >= 5; },
+      prog: function () { return [Math.min(state.perfectCount, 5), 5]; } },
+    { id: 'perfect-15', icon: '👑', name: 'Perfectionist',
+      desc: 'Score 100% on fifteen occasions.',
+      test: function () { return state.perfectCount >= 15; },
+      prog: function () { return [Math.min(state.perfectCount, 15), 15]; } },
     { id: 'numeric-25', icon: '🧮', name: 'Actuary in Training',
       desc: 'Answer 25 numeric questions correctly.',
-      test: function () { return state.numericRight >= 25; } },
+      test: function () { return state.numericRight >= 25; },
+      prog: function () { return [Math.min(state.numericRight, 25), 25]; } },
     { id: 'numeric-75', icon: '📐', name: 'Chief Actuary',
       desc: 'Answer 75 numeric questions correctly.',
-      test: function () { return state.numericRight >= 75; } },
+      test: function () { return state.numericRight >= 75; },
+      prog: function () { return [Math.min(state.numericRight, 75), 75]; } },
     { id: 'streak-3', icon: '🔥', name: 'On Risk',
       desc: 'Study on three different days.',
-      test: function () { return state.studyDays.length >= 3; } },
+      test: function () { return state.studyDays.length >= 3; },
+      prog: function () { return [Math.min(state.studyDays.length, 3), 3]; } },
     { id: 'streak-10', icon: '⚡', name: 'Continuous Cover',
       desc: 'Study on ten different days.',
-      test: function () { return state.studyDays.length >= 10; } },
+      test: function () { return state.studyDays.length >= 10; },
+      prog: function () { return [Math.min(state.studyDays.length, 10), 10]; } },
+    { id: 'streak-21', icon: '🛡️', name: 'Iron Discipline',
+      desc: 'Study on twenty-one different days.',
+      test: function () { return state.studyDays.length >= 21; },
+      prog: function () { return [Math.min(state.studyDays.length, 21), 21]; } },
+    { id: 'modules-3', icon: '🥉', name: 'Class Act',
+      desc: 'Master three whole modules.',
+      test: function () { return modulesMastered() >= 3; },
+      prog: function () { return [Math.min(modulesMastered(), 3), 3]; } },
+    { id: 'modules-7', icon: '🥈', name: 'Portfolio Manager',
+      desc: 'Master seven whole modules.',
+      test: function () { return modulesMastered() >= 7; },
+      prog: function () { return [Math.min(modulesMastered(), 7), 7]; } },
     { id: 'halfway', icon: '🧭', name: 'Midpoint Adjustment',
       desc: 'Complete half of all lessons in the academy.',
-      test: function () { var t = totals(); return t.read >= Math.ceil(t.lessons / 2); } },
+      test: function () { var t = totals(); return t.read >= Math.ceil(t.lessons / 2); },
+      prog: function () { var t = totals(); return [Math.min(t.read, Math.ceil(t.lessons / 2)), Math.ceil(t.lessons / 2)]; } },
     { id: 'completionist', icon: '🎓', name: 'Market Scholar',
       desc: 'Complete every lesson and pass every quiz.',
-      test: function () { var t = totals(); return t.read === t.lessons && t.passed === t.quizzes; } }
+      test: function () { var t = totals(); return t.read === t.lessons && t.passed === t.quizzes; },
+      prog: function () { var t = totals(); return [t.read + t.passed, t.lessons + t.quizzes]; } }
   ];
 
   // One badge per module, defined by content files (mod.badge = {icon, name, desc}).
@@ -118,7 +183,13 @@
       icon: b.icon || m.icon,
       name: b.name || (m.title + ' Badge'),
       desc: b.desc || ('Finish every lesson and pass every quiz in “' + m.title + '”.'),
-      test: (function (mod) { return function () { return moduleProgress(mod).done; }; })(m)
+      test: (function (mod) { return function () { return moduleProgress(mod).done; }; })(m),
+      prog: (function (mod) {
+        return function () {
+          var p = moduleProgress(mod);
+          return [p.read + p.quizzed, 2 * p.total];
+        };
+      })(m)
     });
   });
 
@@ -152,6 +223,7 @@
     var hash = location.hash || '#/home';
     var parts = hash.replace(/^#\//, '').split('/');
     var page = parts[0] || 'home';
+    window.onscroll = null;
     window.scrollTo(0, 0);
     if (page === 'home') return renderHome();
     if (page === 'modules') return renderModules();
@@ -195,6 +267,7 @@
       '  <div class="kicker">London Market Academy</div>' +
       '  <h1>Learn the London insurance market</h1>' +
       '  <p>Premium, capital, outwards reinsurance, exposure management, claims, and every major class of business — explained without jargon, with worked numbers.</p>' +
+      (currentStreak() >= 2 ? '  <div class="streak-chip">🔥 ' + currentStreak() + '-day streak — keep it going</div>' : '') +
       '  <div class="stat-row">' +
       '    <div class="stat"><b>' + t.read + '/' + t.lessons + '</b><span>Lessons</span></div>' +
       '    <div class="stat"><b>' + t.passed + '/' + t.quizzes + '</b><span>Quizzes</span></div>' +
@@ -249,9 +322,20 @@
     if (!m) return renderModules();
     setTab('#/modules');
     var p = moduleProgress(m);
+    var scores = [], sum = 0;
+    m.lessons.forEach(function (l) {
+      var b = state.quizBest[keyFor(m, l)];
+      if (b) { scores.push(b.pct); sum += b.pct; }
+    });
+    var avg = scores.length ? Math.round(sum / scores.length) : null;
     var html = '<button class="backlink" data-go="#/modules">‹ Modules</button>' +
       '<h1>' + m.icon + ' ' + esc(m.title) + '</h1>' +
       '<p class="sub">' + esc(m.blurb || m.tagline) + '</p>' +
+      '<div class="mod-summary">' +
+      '<div class="ms"><b>' + p.read + '/' + p.total + '</b><span>Read</span></div>' +
+      '<div class="ms"><b>' + p.quizzed + '/' + p.total + '</b><span>Passed</span></div>' +
+      '<div class="ms"><b>' + (avg !== null ? avg + '%' : '—') + '</b><span>Avg best</span></div>' +
+      '</div>' +
       '<div class="card">';
     m.lessons.forEach(function (l, i) {
       var k = keyFor(m, l);
@@ -282,10 +366,13 @@
     var l = m.lessons[idx];
     setTab('#/modules');
 
-    var html = '<button class="backlink" data-go="#/module/' + m.id + '">‹ ' + esc(m.title) + '</button>' +
+    var best = state.quizBest[keyFor(m, l)];
+    var html = '<div class="read-progress"><div class="read-fill" id="read-fill"></div></div>' +
+      '<button class="backlink" data-go="#/module/' + m.id + '">‹ ' + esc(m.title) + '</button>' +
       '<h1>' + esc(l.title) + '</h1>' +
       '<p class="sub">' + esc(m.title) + ' · Lesson ' + (idx + 1) + ' of ' + m.lessons.length +
       (l.minutes ? ' · ' + l.minutes + ' min' : '') + '</p>' +
+      (best && best.pct >= 70 ? '<div class="lesson-done-chip">✓ Quiz passed · best ' + best.pct + '%</div>' : '') +
       '<div class="card lesson-body">' + l.body + '</div>' +
       '<button class="btn" id="btn-quiz">Test your knowledge (' + l.quiz.length + ' questions)</button>';
 
@@ -297,6 +384,15 @@
 
     app().innerHTML = html;
     bindGoLinks();
+
+    // reading progress bar
+    var fill = document.getElementById('read-fill');
+    window.onscroll = function () {
+      var h = document.documentElement;
+      var max = h.scrollHeight - h.clientHeight;
+      if (fill) fill.style.width = (max > 0 ? Math.min(100, 100 * h.scrollTop / max) : 100) + '%';
+    };
+    window.onscroll();
 
     // mark as read
     var k = keyFor(m, l);
@@ -408,7 +504,10 @@
         if (right && q.type === 'num') { state.numericRight++; save(); }
         var fb = document.getElementById('q-feedback');
         var head = right ? 'Correct.' : (q.type === 'num' ? 'Not quite — the answer is ' + formatAnswer(q) + '.' : 'Not quite.');
-        fb.innerHTML = '<div class="feedback ' + (right ? 'good' : 'bad') + '"><b>' + head + '</b>' + (q.explain || '') + '</div>';
+        fb.innerHTML = '<div class="feedback ' + (right ? 'good' : 'bad') + '"><b>' + head + '</b>' + (q.explain || '') +
+          (right ? '' : '<span class="review-link" id="review-link">Review the lesson ›</span>') + '</div>';
+        var rl = document.getElementById('review-link');
+        if (rl) rl.addEventListener('click', function () { go('#/lesson/' + m.id + '/' + l.id); });
         action.textContent = (qi === l.quiz.length - 1) ? 'See results' : 'Next question';
         // refresh dots
         var wrap = document.querySelector('.quiz-progress');
@@ -451,7 +550,24 @@
         : passed ? 'Passed. Nicely done.'
         : 'Below 70% — skim the lesson and try again.';
 
-      var html = '<h1>Results</h1>' +
+      var review = '<h2>Question review</h2><div class="card">';
+      l.quiz.forEach(function (q, i) {
+        review += '<div class="review-row"><div class="review-ico ' + (results[i] ? 'ok' : 'ko') + '">' +
+          (results[i] ? '✓' : '✗') + '</div><div class="review-q">' + esc(plainText(q.q)) + '</div></div>';
+      });
+      review += '</div>';
+
+      var confetti = '';
+      if (pct === 100) {
+        confetti = '<div class="confetti">';
+        var emo = ['🎉', '✨', '🏅', '🎊'];
+        for (var ci = 0; ci < 24; ci++) {
+          confetti += '<span style="left:' + (Math.random() * 100).toFixed(1) + '%;animation-delay:' + (Math.random() * 0.9).toFixed(2) + 's">' + emo[ci % 4] + '</span>';
+        }
+        confetti += '</div>';
+      }
+
+      var html = confetti + '<h1>Results</h1>' +
         '<div class="card"><div class="score-ring-wrap">' + ring +
         '<h2 style="margin-top:14px">' + msg + '</h2>' +
         (prev && !newBest ? '<p class="sub">Best so far: ' + prev.pct + '%</p>' : '') +
@@ -461,9 +577,10 @@
         (idx < m.lessons.length - 1
           ? '<button class="btn" data-go="#/lesson/' + m.id + '/' + m.lessons[idx + 1].id + '">Next lesson ›</button>'
           : '<button class="btn" data-go="#/module/' + m.id + '">Back to module</button>') +
-        '</div></div>';
+        '</div></div>' + review;
 
       app().innerHTML = html;
+      setTimeout(function () { var c = document.querySelector('.confetti'); if (c) c.remove(); }, 3400);
       bindGoLinks();
       document.getElementById('btn-retry').addEventListener('click', function (e) {
         e.stopPropagation();
@@ -486,9 +603,11 @@
 
     function draw(filter) {
       var f = (filter || '').toLowerCase();
-      var out = '';
+      var out = '', letter = '';
       GLOSSARY.forEach(function (g) {
         if (f && g.term.toLowerCase().indexOf(f) === -1 && g.def.toLowerCase().indexOf(f) === -1) return;
+        var L = g.term.charAt(0).toUpperCase();
+        if (!f && L !== letter) { letter = L; out += '<div class="gloss-letter">' + L + '</div>'; }
         out += '<div class="card" style="padding:13px 15px"><div class="gloss-term">' + esc(g.term) + '</div>' +
           '<div class="gloss-def">' + g.def + '</div></div>';
       });
@@ -508,11 +627,21 @@
       '<div class="award-grid">';
     ACHIEVEMENTS.forEach(function (a) {
       var got = !!state.achievements[a.id];
+      var foot;
+      if (got) {
+        foot = '<div style="margin-top:6px"><span class="pill">Unlocked</span></div>';
+      } else if (a.prog) {
+        var pr = a.prog();
+        var pct = pr[1] ? Math.round(100 * pr[0] / pr[1]) : 0;
+        foot = '<div class="a-prog"><small>' + pr[0] + ' / ' + pr[1] + '</small>' +
+          '<div class="progress-track"><div class="progress-fill" style="width:' + pct + '%"></div></div></div>';
+      } else {
+        foot = '<div style="margin-top:6px"><span class="pill todo">Locked</span></div>';
+      }
       html += '<div class="award' + (got ? '' : ' locked') + '">' +
         '<div class="a-icon">' + a.icon + '</div>' +
         '<div class="a-name">' + esc(a.name) + '</div>' +
-        '<div class="a-desc">' + esc(a.desc) + '</div>' +
-        (got ? '<div style="margin-top:6px"><span class="pill">Unlocked</span></div>' : '<div style="margin-top:6px"><span class="pill todo">Locked</span></div>') +
+        '<div class="a-desc">' + esc(a.desc) + '</div>' + foot +
         '</div>';
     });
     html += '</div>';

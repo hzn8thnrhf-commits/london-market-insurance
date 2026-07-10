@@ -4,7 +4,7 @@ An installable, offline-capable web app that teaches how the **London insurance 
 
 ## What's inside
 
-**12 modules · 58 lessons · ~240 quiz questions (numeric + qualitative) · 22 achievements · 120+ term glossary**
+**13 modules · 64 lessons · ~265 quiz questions (numeric + qualitative) · 31 achievements · 130+ term glossary**
 
 | # | Module | Covers |
 |---|--------|--------|
@@ -20,6 +20,7 @@ An installable, offline-capable web app that teaches how the **London insurance 
 | 10 | Regulation & The Big Picture | Regulators, three-year accounting & reinsurance to close, modern reporting, conduct/sanctions/financial crime, and an end-to-end capstone |
 | 11 | Pens & Paper: The Underwriter–Capital Split | Managing general underwriters & framework economics, fronting, MGA platforms/incubators, catastrophe bonds/sidecars/collateralised reinsurance, lead-vs-follow economics |
 | 12 | Bespoke & Structured Risk Solutions | One-off deal underwriting, credit enhancement & bank capital relief, transactional liability (warranty & indemnity, tax, contingent legal), loss portfolio transfers & adverse development covers, a deal-lifecycle capstone |
+| 13 | Advanced Practitioner | Exposure curves & increased limit factors, sliding scales & swing rates, capital allocation (co-measures, one-year vs ultimate), reserving diagnostics & tail factors, contract law (fair presentation, follow the settlements), float & discounting economics |
 
 Every lesson has worked numeric examples, a key-point summary, and a "test your knowledge" quiz (pass at 70%+). Acronyms are avoided or defined where first used, and the glossary explains every market term in plain English. Progress and awards are saved on your device (browser local storage) — no account, no server.
 

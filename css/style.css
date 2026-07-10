@@ -291,3 +291,92 @@ p { line-height: 1.55; }
 @media (min-width: 640px) {
   .award-grid { grid-template-columns: 1fr 1fr 1fr; }
 }
+
+/* ---------- Learning-experience polish ---------- */
+
+/* Reading progress bar (lesson view) */
+.read-progress {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 60;
+  height: calc(env(safe-area-inset-top, 0px) + 3px);
+  background: transparent; pointer-events: none;
+}
+.read-progress .read-fill {
+  position: absolute; bottom: 0; left: 0; height: 3px; width: 0;
+  background: linear-gradient(90deg, var(--accent), var(--gold));
+  border-radius: 0 2px 2px 0; transition: width 0.1s linear;
+}
+
+/* Lesson typography: clearer anchors */
+.lesson-body h3 {
+  display: flex; align-items: center; gap: 8px;
+  padding-top: 4px; margin: 24px 0 10px;
+}
+.lesson-body h3::before {
+  content: ""; display: block; width: 4px; height: 1.05em; flex: none;
+  border-radius: 2px; background: linear-gradient(180deg, var(--accent), var(--gold));
+}
+.lesson-body table tr:nth-child(even) td { background: color-mix(in srgb, var(--line) 40%, transparent); }
+.lesson-body li::marker { color: var(--accent); font-weight: 700; }
+
+.example .ex-label::before { content: "🧮 "; }
+.keypoint .ex-label::before { content: "📌 "; }
+
+/* Lesson footer meta */
+.lesson-done-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 0.78rem; font-weight: 700; color: var(--green);
+  background: var(--green-soft); border-radius: 20px; padding: 5px 12px; margin-bottom: 10px;
+}
+
+/* Streak chip in hero */
+.streak-chip {
+  display: inline-flex; align-items: center; gap: 6px; margin-top: 12px;
+  background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #ffe9c0; font-size: 0.78rem; font-weight: 700;
+  border-radius: 20px; padding: 5px 12px;
+}
+
+/* Module header stats */
+.mod-summary { display: flex; gap: 10px; margin: 0 0 14px; }
+.mod-summary .ms {
+  flex: 1; background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+  padding: 10px 12px; box-shadow: var(--shadow);
+}
+.mod-summary .ms b { display: block; font-size: 1.05rem; }
+.mod-summary .ms span { font-size: 0.68rem; color: var(--text2); text-transform: uppercase; letter-spacing: 0.06em; }
+
+/* Quiz review breakdown on results */
+.review-row { display: flex; gap: 10px; padding: 10px 2px; border-bottom: 1px solid var(--line); align-items: flex-start; }
+.review-row:last-child { border-bottom: 0; }
+.review-ico { width: 22px; height: 22px; border-radius: 50%; flex: none; font-size: 0.72rem; font-weight: 800;
+  display: flex; align-items: center; justify-content: center; margin-top: 1px; }
+.review-ico.ok { background: var(--green-soft); color: var(--green); }
+.review-ico.ko { background: var(--red-soft); color: var(--red); }
+.review-q { font-size: 0.84rem; color: var(--text2); line-height: 1.45; }
+
+/* Confetti for perfect scores */
+.confetti { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 90; }
+.confetti span {
+  position: absolute; top: -8%; font-size: 1.3rem;
+  animation: confetti-fall 2.6s ease-in forwards;
+}
+@keyframes confetti-fall {
+  0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(110vh) rotate(540deg); opacity: 0.6; }
+}
+
+/* Feedback extras */
+.feedback .review-link { display: inline-block; margin-top: 8px; font-weight: 700; color: var(--accent); cursor: pointer; }
+
+/* Awards: progress to unlock */
+.award .a-prog { margin-top: 8px; }
+.award .a-prog .progress-track { margin-top: 4px; }
+.award .a-prog small { font-size: 0.68rem; color: var(--text2); font-weight: 700; }
+
+/* Glossary letter headers */
+.gloss-letter {
+  font-size: 0.78rem; font-weight: 800; color: var(--accent);
+  letter-spacing: 0.12em; margin: 16px 4px 8px; text-transform: uppercase;
+  display: flex; align-items: center; gap: 10px;
+}
+.gloss-letter::after { content: ""; flex: 1; height: 1px; background: var(--line); }

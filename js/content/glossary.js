@@ -120,6 +120,17 @@ window.LMA_GLOSSARY = [
   { term: 'Smart follower', def: 'A carrier or vehicle that follows chosen leads systematically (by rule or algorithm) with a minimal cost base, competing on expense ratio rather than risk selection.' },
   { term: 'Tax liability insurance', def: 'Cover for a specific, identified tax position failing on challenge — underwritten from legal opinions; a known-risk transactional product.' },
   { term: 'Trapped collateral', def: 'Collateral held in trust against potential loss development after an event, unavailable to investors for redeployment — a drag that slows alternative capital’s return after catastrophes.' },
-  { term: 'Warranty & indemnity insurance', def: 'Cover paying a company buyer for breaches of the seller’s warranties discovered after completion (in the United States: representations & warranties insurance).' }
+  { term: 'Warranty & indemnity insurance', def: 'Cover paying a company buyer for breaches of the seller’s warranties discovered after completion (in the United States: representations & warranties insurance).' },
+  { term: 'Co-measure allocation', def: 'Allocating diversified capital to classes by their average loss contribution within the firm’s worst simulated years — rewarding uncorrelated business.' },
+  { term: 'Duration matching', def: 'Aligning the interest-rate sensitivity of investments with that of liabilities so rate moves affect both sides similarly, avoiding an accidental rate bet.' },
+  { term: 'Exposure curve (first-loss scale)', def: 'A curve mapping a deductible or limit (as a share of a property’s value) to the share of expected loss cost it contains — the tool for pricing property layers.' },
+  { term: 'Fair presentation', def: 'The commercial insured’s pre-inception duty (Insurance Act 2015) to disclose material circumstances accessibly; breaches attract proportionate remedies rather than automatic avoidance.' },
+  { term: 'Float', def: 'Policyholder money temporarily held by an insurer (unearned premium plus claims reserves) and invested until claims are paid — largest in long-tail classes.' },
+  { term: 'Follow the settlements', def: 'A reinsurance clause binding the reinsurer to the cedant’s honest, businesslike claim settlements that arguably fall within both contracts, avoiding double litigation.' },
+  { term: 'Increased limit factors', def: 'Ratios of premium at higher liability limits to premium at a base limit, derived from severity distributions — the casualty tool for pricing excess layers.' },
+  { term: 'Leveraged inflation', def: 'The amplification of claims-severity trend in excess layers: modest ground-up inflation pushes disproportionately more losses over high attachment points.' },
+  { term: 'Sliding-scale commission', def: 'A proportional-treaty ceding commission that moves inversely with the loss ratio between a floor and cap, sharing outcome risk between cedant and reinsurer.' },
+  { term: 'Swing-rated premium', def: 'An excess-of-loss premium adjusted within a minimum–maximum corridor based on actual losses — the insured self-finances losses inside the corridor, with true risk transfer beyond it.' },
+  { term: 'Tail factor', def: 'The assumption extending claims development beyond the oldest age observed in a triangle — small changes move long-tail reserves materially.' }
 ];
 window.LMA_GLOSSARY.sort(function (a, b) { return a.term.localeCompare(b.term); });
