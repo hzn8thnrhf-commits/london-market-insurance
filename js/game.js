@@ -81,6 +81,7 @@
       submissions: [], subIndex: 0, phase: 'uw',   // uw -> ri -> report
       ri: { qs: 0, catA: 0, catL: 0, catUsed: 0 },
       market: 1.0, gameOver: false, lastReport: null, dividends: 0, raised: 0,
+      guided: true, reads: { n: 0, c: 0 },
       records: { catsSurvived: 0, bestQuarter: null, worstQuarter: null, writtenCount: 0 }
     };
     genSubmissions();
@@ -503,6 +504,18 @@
       '</div></div>';
   }
 
+  function stepperBar(cur) {
+    var steps = [
+      { id: 'uw', label: '1 · Underwrite (10 slips)' },
+      { id: 'ri', label: '2 · Protect & capital' },
+      { id: 'report', label: '3 · Results' }
+    ];
+    var idx = steps.map(function (s) { return s.id; }).indexOf(cur);
+    return '<div class="gstep-bar">' + steps.map(function (s, i) {
+      return '<div class="gstep' + (i < idx ? ' done' : i === idx ? ' now' : '') + '">' + (i < idx ? '✓ ' : '') + s.label + '</div>';
+    }).join('') + '</div>';
+  }
+
   function bindCommon() {
     var r = document.getElementById('g-reset');
     if (r) r.addEventListener('click', function () {
@@ -739,6 +752,10 @@
         statCard('Best quarter', G.records.bestQuarter !== null ? money(G.records.bestQuarter) : '—') +
         statCard('Cats endured', G.records.catsSurvived) +
         '</div>';
+      if (G.reads && G.reads.n >= 6) {
+        html += '<div class="gline"><span>Slip-reading accuracy (your price & record calls)</span><span>' + Math.round(100 * G.reads.c / G.reads.n) + '% over ' + G.reads.n + ' reads</span></div>' +
+          '<div class="d-caption">How often your guided-mode judgements matched the data. Above ~80% and you are genuinely reading slips — consider fast mode.</div>';
+      }
       G.history.slice(-8).reverse().forEach(function (h) {
         html += '<div class="gline"><span>Y' + yearOf(h.q) + ' Q' + qInYear(h.q) + '</span><span class="' + (h.profit >= 0 ? 'gpos' : 'gneg') + '">' + money(h.profit) + ' · CR ' + (100 * h.cr).toFixed(0) + '%</span></div>';
       });
@@ -750,6 +767,194 @@
   }
 
   function renderSlip() {
+    if (G.guided !== false) return renderSlipGuided();
+    return renderSlipFast();
+  }
+
+  // shared decision handler for both slip modes
+  function decideSlip(r, share) {
+    if (share > 0) {
+      r.share = share; r.writtenQ = G.q; r.earnedQtrs = 0;
+      G.policies.push(r);
+      G.records.writtenCount++;
+    } else r.share = 0;
+    G.subIndex++;
+    if (G.subIndex >= G.submissions.length) { G.phase = 'ri'; save(); go('#/game/ri'); }
+    else { save(); renderSlip(); }
+    window.scrollTo(0, 0);
+  }
+
+  function modeToggle() {
+    return '<button class="mode-toggle" id="g-mode">' +
+      (G.guided !== false ? '⚡ Confident? Switch to fast mode (everything on one screen)' : '🧭 Switch back to guided step-by-step mode') + '</button>';
+  }
+  function bindModeToggle() {
+    var m = document.getElementById('g-mode');
+    if (m) m.addEventListener('click', function () {
+      G.guided = (G.guided === false);
+      save(); renderSlip();
+    });
+  }
+
+  /* ----- guided mode: underwrite each slip in four mentored steps ----- */
+
+  var gWalk = { idx: -1 };
+
+  function renderSlipGuided() {
+    if (G.phase !== 'uw' || G.subIndex >= G.submissions.length) { go('#/game'); return; }
+    var r = G.submissions[G.subIndex];
+    var cls = CLASSES.filter(function (c) { return c.id === r.classId; })[0];
+    if (gWalk.idx !== G.subIndex) gWalk = { idx: G.subIndex, step: 1, priceRead: null, recordRead: null };
+
+    var rateDelta = r.rate / r.benchRate - 1;
+    var priceBucket = rateDelta >= 0.05 ? 0 : rateDelta <= -0.05 ? 2 : 1;   // strong / fair / cheap
+    var recordBucket = r.histLR < 0.3 ? 0 : r.histLR <= 0.6 ? 1 : 2;        // clean / mixed / poor
+    var priceLabels = ['Strong — above benchmark', 'Fair — around benchmark', 'Cheap — below benchmark'];
+    var recordLabels = ['Good — a clean record', 'Mixed — some losses', 'Poor — heavy losses'];
+
+    var dots = '<div class="quiz-progress">' + G.submissions.map(function (s, i) {
+      var c = 'quiz-dot';
+      if (i < G.subIndex) c += s.share > 0 ? ' right' : ' wrong';
+      else if (i === G.subIndex) c += ' current';
+      return '<div class="' + c + '"></div>';
+    }).join('') + '</div>';
+
+    var head = '<div class="slip-head"><span class="slip-class">' + cls.icon + ' ' + esc(cls.name) + '</span>' +
+      '<span class="slip-prem">' + money(r.premium) + ' <small>annual premium</small></span></div>' +
+      '<div class="slip-name">' + esc(r.name) + '</div>' +
+      (r.renewalOf ? '<div class="renewal-pill">🔁 <strong>Renewal of your expiring line</strong> · rate change ' +
+        ((r.rate / r.prevRate - 1) >= 0 ? '+' : '') + (100 * (r.rate / r.prevRate - 1)).toFixed(0) + '% · ' +
+        (r.prevExp > 0 ? 'your year on it: losses of ' + money(r.prevExp) : 'your year on it: clean') + '</div>' : '');
+
+    var html = header() + stepperBar('uw') +
+      '<button class="backlink" data-ggo="#/game">‹ Dashboard <span style="font-weight:500">(your place is saved)</span></button>' +
+      dots + '<div class="card slip">' + head +
+      '<span class="q-tag">Slip ' + (G.subIndex + 1) + ' of 10 · Step ' + gWalk.step + ' of 4</span>';
+
+    if (gWalk.step === 1) {
+      html += '<h3 style="margin:10px 0 6px">Step 1 — Judge the price</h3>' +
+        '<table class="slip-table">' +
+        (r.tiv ? '<tr><td>Total insured value</td><td>' + money(r.tiv) + '</td></tr>' : '') +
+        '<tr><td>' + (r.attach ? 'Layer' : 'Limit') + '</td><td>' + money(r.limit) + (r.attach ? ' xs ' + money(r.attach) : '') + '</td></tr>' +
+        '<tr><td>Rate on ' + (r.tiv ? 'limit' : 'line') + '</td><td>' + (100 * r.rate).toFixed(2) + '%</td></tr>' +
+        '<tr><td>Class benchmark rate</td><td>' + (100 * r.benchRate).toFixed(2) + '%</td></tr>' +
+        '</table>' +
+        '<p class="sub">The rate is the price per unit of risk; the benchmark is what the market currently charges for this class. Compare them — <strong>how does this price look to you?</strong></p>';
+      if (gWalk.priceRead === null) {
+        html += '<div class="btn-row">' +
+          '<button class="btn secondary" data-read="0">Strong</button>' +
+          '<button class="btn secondary" data-read="1">Fair</button>' +
+          '<button class="btn secondary" data-read="2">Cheap</button></div>';
+      } else {
+        var priceRight = gWalk.priceRead === priceBucket;
+        html += '<div class="feedback ' + (priceRight ? 'good' : 'bad') + '"><b>' + (priceRight ? 'Good read.' : 'Look again.') + '</b>' +
+          'This risk is priced <strong>' + (rateDelta >= 0 ? '+' : '') + (100 * rateDelta).toFixed(0) + '% versus benchmark</strong> — ' + priceLabels[priceBucket].toLowerCase() + '. ' +
+          (priceBucket === 2 ? 'When a price is below benchmark, always ask why the market let it go cheap.' :
+            priceBucket === 0 ? 'A price cushion above benchmark is margin you can lose and still break even.' :
+            'At benchmark, the risk’s own quality decides everything — which is the next step.') + '</div>' +
+          '<button class="btn" id="g-next-step">Next: the loss record ›</button>';
+      }
+    } else if (gWalk.step === 2) {
+      html += '<h3 style="margin:10px 0 6px">Step 2 — Judge the risk itself</h3>' +
+        '<table class="slip-table">' +
+        '<tr><td>Perils</td><td>' + cls.perils + '</td></tr>' +
+        (r.tail ? '<tr><td>Tail</td><td>Claims may emerge up to ' + r.tail + ' quarters after expiry</td></tr>' : '') +
+        '<tr><td>5-year record</td><td><div class="ghist-row">' + r.hist.map(function (h, i) {
+          return '<span class="ghist' + (h ? ' loss' : '') + '">Yr−' + (5 - i) + ': ' + (h ? money(h) : 'clean') + '</span>';
+        }).join('') + '</div>5-yr loss ratio ≈ ' + (100 * r.histLR).toFixed(0) + '%</td></tr>' +
+        '</table>' +
+        '<p class="sub">The price told you what the market thinks. The record hints at the <strong>hidden quality</strong> of the risk itself — something the rate cannot show. <strong>Your read?</strong></p>';
+      if (gWalk.recordRead === null) {
+        html += '<div class="btn-row">' +
+          '<button class="btn secondary" data-read="0">Good</button>' +
+          '<button class="btn secondary" data-read="1">Mixed</button>' +
+          '<button class="btn secondary" data-read="2">Poor</button></div>';
+      } else {
+        var recRight = gWalk.recordRead === recordBucket;
+        html += '<div class="feedback ' + (recRight ? 'good' : 'bad') + '"><b>' + (recRight ? 'Agreed.' : 'Hmm — look again.') + '</b>' +
+          'A ' + (100 * r.histLR).toFixed(0) + '% five-year loss ratio reads as <strong>' + recordLabels[recordBucket].toLowerCase() + '</strong>. ' +
+          (r.zone || r.limit > 8e6 ? 'Caveat for a severity risk like this: five clean years prove little — the big loss simply may not have happened yet. Weight the price and perils more than a short clean record.' :
+            'For an attritional class like this the record is genuinely informative — frequency shows up quickly.') + '</div>' +
+          '<button class="btn" id="g-next-step">Next: portfolio fit ›</button>';
+      }
+    } else if (gWalk.step === 3) {
+      var bdN = capitalBreakdown(null);
+      var bdF = capitalBreakdown({ premium: r.premium, limit: r.limit, dmg: r.dmg, zone: r.zone, share: 1, classId: r.classId });
+      var mc = bdF.total - bdN.total;
+      html += '<h3 style="margin:10px 0 6px">Step 3 — Does it fit your book?</h3>' +
+        '<p class="sub">A good risk can still be a bad decision if it stacks on your peak. This is what writing the full line does to <em>your</em> portfolio:</p>' +
+        '<div class="slip-impact">' +
+        '<div class="gline"><span>Required capital</span><span>' + money(bdN.total) + ' → ' + money(bdF.total) + '</span></div>' +
+        '<div class="gline"><span>Solvency after</span><span>' + pct(G.capital / bdF.total) + '</span></div>' +
+        (r.zone ? '<div class="gline"><span>' + esc(ZONES[r.zone].name) + ' PML</span><span>' + money(zonePML(r.zone, null)) + ' → ' + money(zonePML(r.zone, { zone: r.zone, limit: r.limit, dmg: r.dmg, share: 1 })) + '</span></div>' : '<div class="gline"><span>Catastrophe zones</span><span>none — no accumulation added</span></div>') +
+        '</div>' +
+        '<div class="d-caption" style="margin-top:8px">' +
+        (mc < 60000 ? 'Almost no extra capital: its bad years are unlikely to coincide with your existing peaks — diversification absorbs it.' :
+          (bdF.catRisk - bdN.catRisk) > mc * 0.5 ? 'The capital moves mainly because this grows your <strong>peak accumulation</strong> — one event there could now take more of your money.' :
+          'The capital moves through <strong>premium risk</strong>: simply more business that can go wrong in an ordinary bad year.') + '</div>' +
+        '<button class="btn" id="g-next-step" style="margin-top:10px">Next: the decision ›</button>';
+    } else {
+      var bdN2 = capitalBreakdown(null);
+      var extraFull = { premium: r.premium, limit: r.limit, dmg: r.dmg, zone: r.zone, share: 1, classId: r.classId };
+      var bdF2 = capitalBreakdown(extraFull);
+      var mc2 = bdF2.total - bdN2.total;
+      var suspended = solvency() < 1;
+      var canFull = (G.capital / bdF2.total >= 1) && !suspended;
+      var canHalf = (G.capital / requiredCapital({ premium: r.premium, limit: r.limit, dmg: r.dmg, zone: r.zone, share: 0.5, classId: r.classId }) >= 1) && !suspended;
+      var estProfit = r.premium * (1 - r.estELR - r.acq);
+      var rocTxt = mc2 < 60000 ? (estProfit > 0 ? 'exceptional — profit with negligible extra capital' : 'no capital needed, but the deal itself looks loss-making')
+        : ((100 * estProfit / mc2).toFixed(0) + '% on the extra capital' + (estProfit / mc2 >= 0.15 ? ' — clears the 15% hurdle' : estProfit / mc2 >= 0 ? ' — thin against a 15% hurdle' : ' — expected to destroy value'));
+      var fitIcon = suspended ? '🚫' : mc2 < 60000 ? '✅' : (bdF2.catRisk - bdN2.catRisk) > mc2 * 0.5 ? '⚠️' : '✅';
+
+      html += '<h3 style="margin:10px 0 6px">Step 4 — Decide</h3>' +
+        '<p class="sub">Your three reads, side by side — this is the whole judgement:</p>' +
+        '<div class="slip-impact">' +
+        '<div class="dial"><span class="dico">' + (priceBucket === 0 ? '✅' : priceBucket === 1 ? '➖' : '⚠️') + '</span><span><strong>Price:</strong> ' + priceLabels[priceBucket] + ' (' + (rateDelta >= 0 ? '+' : '') + (100 * rateDelta).toFixed(0) + '%)' + (gWalk.priceRead === priceBucket ? '' : ' — you read it as “' + ['strong', 'fair', 'cheap'][gWalk.priceRead] + '”') + '</span></div>' +
+        '<div class="dial"><span class="dico">' + (recordBucket === 0 ? '✅' : recordBucket === 1 ? '➖' : '⚠️') + '</span><span><strong>Record:</strong> ' + recordLabels[recordBucket] + ' (' + (100 * r.histLR).toFixed(0) + '% five-year loss ratio)</span></div>' +
+        '<div class="dial"><span class="dico">' + fitIcon + '</span><span><strong>Fit:</strong> extra capital ' + money(mc2) + ' · return on it: ' + rocTxt + '</span></div>' +
+        '</div>' +
+        '<p class="sub" style="margin-top:8px">Estimated annual profit ' + money(estProfit) + ' = premium × (100% − est. loss ratio ' + (100 * r.estELR).toFixed(0) + '% − acquisition ' + (100 * r.acq).toFixed(0) + '%). Two or three green ticks with a healthy return usually deserves a line; a warning on price <em>and</em> record rarely does; a fit warning alone is what half-lines are for.</p>' +
+        '<div class="btn-row">' +
+        '<button class="btn" id="g-full"' + (canFull ? '' : ' disabled') + '>Write 100%</button>' +
+        '<button class="btn secondary" id="g-half"' + (canHalf ? '' : ' disabled') + '>Write 50%</button>' +
+        '<button class="btn ghost" id="g-decline">Decline</button></div>' +
+        (suspended ? '<div class="d-caption" style="margin-top:8px">🚫 Below required capital — you can only decline until capital is restored.</div>' :
+          !canFull ? '<div class="d-caption" style="margin-top:8px">⚠️ Not enough headroom for the full line — half it or decline.</div>' : '');
+    }
+
+    html += '</div>' + modeToggle() +
+      (G.subIndex > 0 && gWalk.step === 1 ? '<br><button class="backlink" id="g-undo">↩︎ Undo previous decision</button>' : '');
+
+    app().innerHTML = html;
+    bindCommon();
+    bindModeToggle();
+
+    document.querySelectorAll('[data-read]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var v = Number(b.getAttribute('data-read'));
+        G.reads = G.reads || { n: 0, c: 0 };
+        G.reads.n++;
+        if (gWalk.step === 1) { gWalk.priceRead = v; if (v === priceBucket) G.reads.c++; }
+        else { gWalk.recordRead = v; if (v === recordBucket) G.reads.c++; }
+        save();
+        renderSlipGuided();
+      });
+    });
+    var ns = document.getElementById('g-next-step');
+    if (ns) ns.addEventListener('click', function () { gWalk.step++; renderSlipGuided(); window.scrollTo(0, 0); });
+    var bf = document.getElementById('g-full');
+    var bh = document.getElementById('g-half');
+    var bd = document.getElementById('g-decline');
+    if (bf && !bf.disabled) bf.addEventListener('click', function () { decideSlip(r, 1); });
+    if (bh && !bh.disabled) bh.addEventListener('click', function () { decideSlip(r, 0.5); });
+    if (bd) bd.addEventListener('click', function () { decideSlip(r, 0); });
+    var gu = document.getElementById('g-undo');
+    if (gu) gu.addEventListener('click', function () { undoLast(); gWalk.idx = -1; renderSlipGuided(); });
+  }
+
+  /* ----- fast mode: the whole slip on one screen ----- */
+
+  function renderSlipFast() {
     if (G.phase !== 'uw' || G.subIndex >= G.submissions.length) { go('#/game'); return; }
     var r = G.submissions[G.subIndex];
     var cls = CLASSES.filter(function (c) { return c.id === r.classId; })[0];
@@ -800,7 +1005,7 @@
         (r.prevExp > 0 ? 'your year on it: losses of ' + money(r.prevExp) : 'your year on it: clean') + '</div>';
     }
 
-    var html = header() +
+    var html = header() + stepperBar('uw') +
       '<button class="backlink" data-ggo="#/game">‹ Dashboard <span style="font-weight:500">(your place is saved)</span></button>' +
       '<div class="quiz-progress">' + G.submissions.map(function (s, i) {
         var c = 'quiz-dot';
@@ -860,11 +1065,12 @@
       (suspended ? '<div class="d-caption" style="margin-top:8px">🚫 <strong>Regulatory suspension:</strong> you are below required capital. You cannot bind new business — decline the rest, then raise capital or buy reinsurance.</div>' :
         !canFull ? '<div class="d-caption" style="margin-top:8px">⚠️ Capital headroom is too tight for the full line — half it, decline, or buy more reinsurance next phase.</div>' : '') +
       '<div class="d-caption" style="margin-top:8px">Unsure what any field means? <span class="review-link" data-ggo="#/game/guide">Open the guided tour ›</span></div>' +
-      '</div>' +
-      (G.subIndex > 0 ? '<button class="backlink" id="g-undo">↩︎ Undo previous decision</button>' : '');
+      '</div>' + modeToggle() +
+      (G.subIndex > 0 ? '<br><button class="backlink" id="g-undo">↩︎ Undo previous decision</button>' : '');
 
     app().innerHTML = html;
     bindCommon();
+    bindModeToggle();
     var gu = document.getElementById('g-undo');
     if (gu) gu.addEventListener('click', function () { undoLast(); renderSlip(); });
     var ch = document.getElementById('cap-how');
@@ -874,17 +1080,7 @@
       ch.textContent = d.hidden ? '🧮 Show the capital calculation' : '🧮 Hide the capital calculation';
     });
 
-    function decide(share) {
-      if (share > 0) {
-        r.share = share; r.writtenQ = G.q; r.earnedQtrs = 0;
-        G.policies.push(r);
-        G.records.writtenCount++;
-      } else r.share = 0;
-      G.subIndex++;
-      if (G.subIndex >= G.submissions.length) { G.phase = 'ri'; save(); go('#/game/ri'); }
-      else { save(); renderSlip(); }
-      window.scrollTo(0, 0);
-    }
+    function decide(share) { decideSlip(r, share); }
     var bf = document.getElementById('g-full');
     var bh = document.getElementById('g-half');
     if (canFull) bf.addEventListener('click', function () { decide(1); });
@@ -921,7 +1117,7 @@
 
     var qsLocked = qInYear(G.q) !== 1;
     var seasonW = catSeasonWeight();
-    var html = header() +
+    var html = header() + stepperBar('ri') +
       '<button class="backlink" id="g-reopen">↩︎ Reopen the last slip</button>' +
       '<h2>Portfolio decisions — Y' + yearOf(G.q) + ' Q' + qInYear(G.q) + '</h2>' +
       '<div class="card"><h3 style="margin-top:0">Quota share — an annual treaty</h3>' +
@@ -996,7 +1192,7 @@
   function renderReport() {
     var r = G.lastReport;
     if (!r) { go('#/game'); return; }
-    var html = header();
+    var html = header() + (G.gameOver ? '' : stepperBar('report'));
 
     if (G.gameOver) {
       html += '<div class="card" style="border-color:var(--red)"><h2 style="margin-top:0">💀 Insolvent</h2>' +
