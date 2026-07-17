@@ -450,6 +450,111 @@
     });
   }
 
+  function renderGuide() {
+    function note(n, body, sowhat) {
+      return '<div class="tut-note"><div class="tut-num">' + n + '</div><div class="tut-body">' + body +
+        (sowhat ? '<span class="sowhat">' + sowhat + '</span>' : '') + '</div></div>';
+    }
+
+    var html = '<button class="backlink" data-ggo="#/game">‹ Back</button>' +
+      '<h1>📖 How to read a slip</h1>' +
+      '<p class="sub">Below is a practice submission — nothing binds. Each part of the slip is explained in turn: what it shows, and the “so what” for your decision.</p>' +
+
+      '<div class="card slip">' +
+
+      '<div class="tut-frag"><div class="slip-head"><span class="slip-class">🏭 PROPERTY D&F</span>' +
+      '<span class="slip-prem">$448k <small>annual premium</small></span></div>' +
+      '<div class="slip-name">Bayshore Resorts Group</div></div>' +
+      note(1,
+        'The <strong>class</strong> tells you what kind of trouble to expect: property is short-tail (claims known fast) but catastrophe-exposed; casualty is the opposite — quiet for years, then late claims. The <strong>premium</strong> is annual and earns into your results a quarter at a time.',
+        'Premium is your upside. Before admiring it, find your downside — that comes next.') +
+
+      '<div class="tut-frag"><table class="slip-table">' +
+      '<tr><td>Total insured value</td><td>$30.00m</td></tr>' +
+      '<tr><td>Limit</td><td>$8.00m</td></tr>' +
+      '</table></div>' +
+      note(2,
+        'The <strong>total insured value</strong> is everything the client owns at the site; the <strong>limit</strong> ($8m) is the most this policy can pay you out of it. Notice the asymmetry: you collect $448k a year — and stand to pay up to $8m.',
+        'You are selling an 18-to-1 payout. One total loss consumes eighteen years of this premium — so risk selection, not volume, is the job.') +
+
+      '<div class="tut-frag"><table class="slip-table">' +
+      '<tr><td>Rate on limit</td><td>5.60% <span class="gpos">(+12% vs class benchmark)</span></td></tr>' +
+      '<tr><td>Acquisition cost</td><td>22.0%</td></tr>' +
+      '</table></div>' +
+      note(3,
+        'The <strong>rate</strong> is premium ÷ limit — the price per unit of risk. The comparison to the <strong>class benchmark</strong> is your rate-adequacy signal: +12% means this deal is priced 12% above the going market level. The <strong>acquisition cost</strong> (brokerage and commissions) never reaches you: of the $448k, about $99k is gone on day one.',
+        'Above benchmark = margin cushion. Below benchmark = ask WHY it is cheap — in this market, cheap usually knows something you don’t.') +
+
+      '<div class="tut-frag"><table class="slip-table">' +
+      '<tr><td>Perils</td><td>All risks of physical damage & business interruption incl. named windstorm</td></tr>' +
+      '<tr><td>Cat zone</td><td>US Gulf — windstorm · PML $1.36m</td></tr>' +
+      '</table></div>' +
+      note(4,
+        'The <strong>perils</strong> define what can hurt you; the <strong>cat zone</strong> tells you this risk stacks with every other Gulf risk you hold. Its <strong>PML</strong> (probable maximum loss, $1.36m) is the modelled slice of the limit a major hurricane would claim.',
+        'The question is never “what is THIS risk’s PML?” — it is “what does it add to MY pile?”. One hurricane hits your whole Gulf book at once. That is why the portfolio impact panel below matters more than anything above it.') +
+
+      '<div class="tut-frag"><table class="slip-table">' +
+      '<tr><td>5-year record</td><td><div class="ghist-row">' +
+      '<span class="ghist">Yr−5: clean</span><span class="ghist">Yr−4: clean</span><span class="ghist loss">Yr−3: $650k</span><span class="ghist">Yr−2: clean</span><span class="ghist">Yr−1: clean</span>' +
+      '</div>5-yr loss ratio ≈ 29%</td></tr></table></div>' +
+      note(5,
+        'The <strong>loss record</strong> is your window into the risk’s underlying quality — how well the client runs its operations — which the rate alone cannot tell you. One loss in five years at a 29% loss ratio is a decent record for this class.',
+        'Read price and record TOGETHER: a strong rate on a dirty risk can still lose; a fair rate on a clean risk can be a gem. And beware: for severity classes, five clean years prove very little — the big one simply hasn’t happened yet.') +
+
+      '<div class="tut-frag"><div class="slip-impact"><div class="d-title">The underwriter’s view</div>' +
+      '<div class="gline"><span>Est. annual profit (your estimate)</span><span class="gpos">$76k</span></div>' +
+      '<div class="gline"><span>Extra capital required</span><span>$410k</span></div>' +
+      '<div class="gline"><span>Return on marginal capital</span><span>19% — clears a 15% hurdle</span></div>' +
+      '</div></div>' +
+      note(6,
+        'The <strong>estimate</strong> is built from the rate versus benchmark — it does NOT know the hidden quality of the risk (that judgement is yours, from the record). The <strong>extra capital</strong> is what this risk adds to your requirement, and the <strong>return on marginal capital</strong> divides one by the other.',
+        'Capital is your scarce resource. A modest profit needing almost no extra capital (a diversifying risk) can beat a big profit that grows your peak zone. 15% is your hurdle — below it, the risk is renting your capital too cheaply.') +
+
+      '<div class="tut-frag"><div class="slip-impact"><div class="d-title">Portfolio impact (full line)</div>' +
+      '<div class="gline"><span>Required capital</span><span>$2.68m → $3.09m</span></div>' +
+      '<div class="gline"><span>Solvency after</span><span class="gpos">324%</span></div>' +
+      '<div class="gline"><span>US Gulf — windstorm PML</span><span>$8.28m → $9.64m</span></div>' +
+      '</div></div>' +
+      note(7,
+        'The same risk is a <strong>different decision depending on your existing book</strong>. Here it would push your Gulf PML from $8.28m to $9.64m and your required capital up $410k, leaving solvency at a comfortable 324%. If your Gulf pile were already at your limit, this identical slip would deserve a decline.',
+        'This is the heart of portfolio underwriting: you are never pricing a risk in isolation — you are pricing its marginal effect on everything you already wrote.') +
+
+      '<div class="tut-frag"><div class="btn-row">' +
+      '<button class="btn" disabled>Write 100%</button>' +
+      '<button class="btn secondary" disabled>Write 50%</button>' +
+      '<button class="btn ghost" disabled>Decline</button>' +
+      '</div></div>' +
+      note(8,
+        'Three answers, all legitimate. <strong>100%</strong> when price, quality and portfolio fit all agree. <strong>50%</strong> when you like the risk but not the concentration — half-lines are how real underwriters manage aggregation while keeping the relationship. <strong>Decline</strong> when any leg fails.',
+        'Declining is a position, not a failure. In soft markets the decline button is the most profitable one on the screen.') +
+      '</div>' +
+
+      '<h2>The quarterly rhythm</h2><div class="card"><div class="lesson-body">' +
+      '<p><strong>1 · Review 10 slips</strong> — decisions as above, one at a time.</p>' +
+      '<p><strong>2 · Portfolio decisions</strong> — set the quota share (annual, Q1 only), the catastrophe layer (seasonally priced, 2× limit per year), and any capital actions (raise when thin, dividend when fat).</p>' +
+      '<p><strong>3 · Close the quarter</strong> — the dice roll: attritional losses, large losses, catastrophes by zone, late casualty claims drawing on the IBNR you provisioned. Then read the report the way the Regulation module taught: decompose it.</p>' +
+      '<p style="margin-bottom:0"><strong>Watch two numbers above all:</strong> your <strong>solvency ratio</strong> (below 100% = regulatory suspension) and your <strong>worst zone PML against capital</strong> (a full bar means one event takes most of your money).</p>' +
+      '</div></div>' +
+
+      '<h2>The six questions to ask every slip</h2><div class="card"><div class="lesson-body"><ol style="margin-bottom:0">' +
+      '<li>What is the rate <strong>versus benchmark</strong> — and if it’s cheap, why?</li>' +
+      '<li>What does the <strong>loss record</strong> say about the risk’s quality?</li>' +
+      '<li>What is my <strong>downside</strong> — limit, perils, tail?</li>' +
+      '<li>What does it add to my <strong>peak accumulation</strong>?</li>' +
+      '<li>What is the <strong>return on the marginal capital</strong> it consumes?</li>' +
+      '<li>Would <strong>half a line</strong> get most of the profit with less concentration?</li>' +
+      '</ol></div></div>' +
+
+      '<button class="btn" id="tut-cta" style="margin-bottom:8px">' + (G && G.q ? 'Back to the game' : 'Found your syndicate — $10m capital') + '</button>';
+
+    app().innerHTML = html;
+    bindCommon();
+    document.getElementById('tut-cta').addEventListener('click', function () {
+      if (G && G.q) go('#/game');
+      else { newGame(); go('#/game'); }
+    });
+  }
+
   function renderIntro() {
     app().innerHTML = '<div class="hero"><div class="kicker">Simulation</div>' +
       '<h1>🎮 Syndicate</h1>' +
@@ -461,7 +566,9 @@
       '<li>Before closing each quarter: set <strong>outwards reinsurance</strong> (quota share + catastrophe layer) and take <strong>capital actions</strong> — raise when thin, pay dividends when fat.</li>' +
       '<li>Then the dice roll: attritional losses, large losses, zone catastrophes — with a market that softens quarter by quarter and hardens after events.</li>' +
       '<li>Below required capital: <strong>regulatory suspension</strong> — no new business until restored. Below zero: insolvency.</li></ul>' +
-      '<button class="btn" id="g-start" style="margin-top:6px">Found your syndicate — $10m capital</button></div>';
+      '<button class="btn secondary" id="g-guide" style="margin:6px 0 10px">📖 First: how to read a slip — guided tour</button>' +
+      '<button class="btn" id="g-start">Found your syndicate — $10m capital</button></div>';
+    document.getElementById('g-guide').addEventListener('click', function () { go('#/game/guide'); });
     document.getElementById('g-start').addEventListener('click', function () { newGame(); render(); });
   }
 
@@ -484,6 +591,9 @@
         '<div class="grow"><div class="mod-title">Quarter report ready</div>' +
         '<div class="mod-meta">See the result and move to the next quarter</div></div><div class="chev">›</div></div></div>';
     }
+
+    html += '<div class="card tappable" data-ggo="#/game/guide" style="padding:11px 15px"><div class="row">' +
+      '<span style="font-size:1.2rem">📖</span><div class="grow"><div class="mod-meta" style="margin:0">How to read a slip — the guided tour, any time you need it.</div></div><div class="chev">›</div></div></div>';
 
     // portfolio summary
     var inf = inForce();
@@ -818,8 +928,8 @@
 
   function render(sub) {
     load();
-    if (!G || !G.started && !G.q) { renderIntro(); return; }
-    if (!G.q) { renderIntro(); return; }
+    if (sub === 'guide') return renderGuide();
+    if (!G || !G.q) { renderIntro(); return; }
     if (G.gameOver && sub !== 'report') { renderReport(); return; }
     if (sub === 'slip') return renderSlip();
     if (sub === 'ri') return renderRi();
@@ -828,10 +938,6 @@
   }
 
   window.LMA_GAME = {
-    render: function (sub) {
-      load();
-      if (!G) { renderIntro(); return; }
-      render(sub);
-    }
+    render: function (sub) { render(sub); }
   };
 })();
