@@ -554,7 +554,7 @@
       '<div class="gline"><span>US Gulf — windstorm PML</span><span>$8.28m → $9.64m</span></div>' +
       '</div></div>' +
       note(7,
-        'The same risk is a <strong>different decision depending on your existing book</strong>. Here it would push your Gulf PML from $8.28m to $9.64m and your required capital up $410k, leaving solvency at a comfortable 324%. If your Gulf pile were already at your limit, this identical slip would deserve a decline.',
+        'The same risk is a <strong>different decision depending on your existing book</strong>. Here it would push your Gulf PML from $8.28m to $9.64m and your required capital up $410k, leaving solvency at a comfortable 324%. If your Gulf pile were already at your limit, this identical slip would deserve a decline. Tap <em>“Show the capital calculation”</em> on any real slip to see the full arithmetic: premium risk + catastrophe risk + reserve risk, combined through squares so the biggest one dominates.',
         'This is the heart of portfolio underwriting: you are never pricing a risk in isolation — you are pricing its marginal effect on everything you already wrote.') +
 
       '<div class="tut-frag"><div class="btn-row">' +
@@ -799,6 +799,16 @@
       '<div class="gline"><span>Solvency after</span><span class="' + (solAfter >= 1.2 ? 'gpos' : solAfter >= 1 ? '' : 'gneg') + '">' + pct(solAfter) + '</span></div>' +
       (r.zone ? '<div class="gline"><span>' + esc(ZONES[r.zone].name) + ' PML</span><span>' + money(zonePML(r.zone, null)) + ' → ' + money(zonePML(r.zone, { zone: r.zone, limit: r.limit, dmg: r.dmg, share: 1 })) + '</span></div>' : '') +
       '<div class="d-caption" style="margin-top:6px">' + capDriver + '</div>' +
+      '<button class="calc-toggle" id="cap-how" type="button" style="padding-top:8px">🧮 Show the capital calculation</button>' +
+      '<div id="cap-detail" hidden>' +
+      '<div class="gline"><span>Premium risk (mix-diversified)</span><span>' + money(bdNow.premRisk) + ' → ' + money(bdFull.premRisk) + '</span></div>' +
+      '<div class="gline"><span>Catastrophe risk (worst net zone PML)</span><span>' + money(bdNow.catRisk) + ' → ' + money(bdFull.catRisk) + '</span></div>' +
+      '<div class="gline"><span>Reserve risk (on IBNR held)</span><span>' + money(bdNow.resRisk) + ' → ' + money(bdFull.resRisk) + '</span></div>' +
+      '<div class="gline"><span>Simple sum of the three</span><span>' + money(bdNow.premRisk + bdNow.catRisk + bdNow.resRisk) + ' → ' + money(bdFull.premRisk + bdFull.catRisk + bdFull.resRisk) + '</span></div>' +
+      '<div class="gline gtotal"><span>Requirement = 1.15 × √(prem² + cat² + res²)</span><span>' + money(reqNow) + ' → ' + money(reqFull) + '</span></div>' +
+      '<div class="gline"><span>Extra capital = the difference</span><span><strong>' + money(margCap) + '</strong></span></div>' +
+      '<div class="d-caption" style="margin-top:6px">Two diversification credits are at work: premium risk is already reduced for how spread your class mix is, and the three risk types then combine through squares rather than adding — so the <em>largest</em> component dominates. Grow your biggest risk (usually the peak cat zone) and the requirement moves almost one-for-one; grow anything else and the square-root largely swallows it. A floor of $2m always applies.</div>' +
+      '</div>' +
       '</div>' +
       '<div class="btn-row">' +
       '<button class="btn" id="g-full"' + (canFull ? '' : ' disabled') + '>Write 100%</button>' +
@@ -814,6 +824,12 @@
     bindCommon();
     var gu = document.getElementById('g-undo');
     if (gu) gu.addEventListener('click', function () { undoLast(); renderSlip(); });
+    var ch = document.getElementById('cap-how');
+    if (ch) ch.addEventListener('click', function () {
+      var d = document.getElementById('cap-detail');
+      d.hidden = !d.hidden;
+      ch.textContent = d.hidden ? '🧮 Show the capital calculation' : '🧮 Hide the capital calculation';
+    });
 
     function decide(share) {
       if (share > 0) {
