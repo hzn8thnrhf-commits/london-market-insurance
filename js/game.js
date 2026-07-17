@@ -149,7 +149,7 @@
       limit: limit, tiv: tiv, attach: attach, premium: premium,
       rate: rate, acq: acq, zone: zone, dmg: dmg,
       trueELR: trueELR, tail: cls.tail,
-      benchRate: benchRate, estELR: estELR,
+      benchRate: benchRate, estELR: estELR, benchDelta: rate / benchRate - 1,
       hist: hist, histLR: histLR, mkt: market, exp: 0,
       writtenQ: 0, share: 0, earnedQtrs: 0, resv: 0, closed: false
     };
@@ -177,6 +177,7 @@
       benchRate: midRate * mkt,
       estELR: Math.min(1.5, p.estELR * ratio),
       hist: hist, histLR: histLoss / (premium * 5), mkt: mkt, exp: 0,
+      benchDelta: rateNew / (midRate * mkt) - 1,
       renewalOf: p.id, prevRate: p.rate, prevExp: p.exp || 0,
       writtenQ: 0, share: 0, earnedQtrs: 0, resv: 0, closed: false
     };
@@ -264,6 +265,15 @@
   function requiredCapital(extra) { return capitalBreakdown(extra).total; }
   function solvency() { return G.capital / requiredCapital(null); }
 
+  // requirement under a hypothetical reinsurance setting (restores state afterwards)
+  function reqWithRi(qs, catA, catL) {
+    var s = G.ri, old = { qs: s.qs, catA: s.catA, catL: s.catL };
+    s.qs = qs; s.catA = catA; s.catL = catL;
+    var v = requiredCapital(null);
+    s.qs = old.qs; s.catA = old.catA; s.catL = old.catL;
+    return v;
+  }
+
   // Share of the year's catastrophe hazard sitting in this quarter, for the
   // portfolio's dominant zone — so cover during hurricane season costs
   // proportionally more, and season-only buying earns no free lunch.
@@ -319,7 +329,8 @@
           var sev = p.limit * p.share * rnd(0.25, 1);
           large += sev;
           p.exp = (p.exp || 0) + sev;
-          events.push({ icon: '🔥', text: 'Large loss: ' + p.name + ' — gross ' + money(sev) + ' to your line.' });
+          events.push({ icon: '🔥', text: 'Large loss: ' + p.name + ' — gross ' + money(sev) + ' to your line.' +
+            ((p.benchDelta || 0) <= -0.05 ? ' <em>You wrote this ' + Math.abs(100 * p.benchDelta).toFixed(0) + '% below benchmark — cheap business hurts twice when it burns.</em>' : '') });
         }
       } else {
         // provision IBNR for the tail as premium earns, at the class benchmark loss ratio
@@ -373,7 +384,8 @@
           qsRecovered += gross * G.ri.qs;
           // one reinstatement: at most 2× the limit recoverable in a year
           var annualRemaining = Math.max(0, 2 * G.ri.catL - (G.ri.catUsed || 0));
-          var rec = Math.min(catRecovery(net), annualRemaining);
+          var fullRec = catRecovery(net);
+          var rec = Math.min(fullRec, annualRemaining);
           G.ri.catUsed = (G.ri.catUsed || 0) + rec;
           if (rec > 0 && G.ri.catL > 0) {
             reinstatement += (rec / G.ri.catL) * riCatPremium;
@@ -382,7 +394,18 @@
           G.records.catsSurvived++;
           events.push({ icon: '🌀', text: zn.peril + ' hits ' + zn.name + '! Gross event loss ' + money(gross) +
             (G.ri.qs ? ' · quota share takes ' + money(gross * G.ri.qs) : '') +
-            (rec > 0 ? ' · cat layer recovers ' + money(rec) + ' (reinstatement ' + money((rec / G.ri.catL) * riCatPremium) + ')' : (G.ri.catL ? ' · below your attachment' : ' · no cat cover in place')) });
+            (rec > 0 ? ' · cat layer recovers ' + money(rec) + ' (reinstatement ' + money((rec / G.ri.catL) * riCatPremium) + ')' : (G.ri.catL ? ' · below your attachment' : ' · no cat cover in place')) +
+            (rec < fullRec - 1000 ? ' · <strong>annual limit exhausted — you are bare for further events this year</strong>' : '') });
+          // the counterfactual: what protection would have done here
+          if (rec === 0 && G.ri.catL === 0 && net > 500000) {
+            var hypoA = Math.round(net * 0.35 / 5e5) * 5e5;
+            var hypoL = Math.round(net * 0.6 / 5e5) * 5e5;
+            var hypoRec = Math.min(hypoL, Math.max(0, net - hypoA));
+            if (hypoRec > 250000) {
+              events.push({ icon: '💡', text: 'Lesson: a layer of ' + money(hypoL) + ' xs ' + money(hypoA) +
+                ' would have recovered about ' + money(hypoRec) + ' of this event. Cover is cheapest before the storm — and dearest after it.' });
+            }
+          }
         }
       }
     });
@@ -440,8 +463,10 @@
     if (!G.records.worstQuarter || profit < G.records.worstQuarter) G.records.worstQuarter = profit;
 
     // market cycle: softens slowly, hardens after cats
+    report.mb = G.market;
     if (catGross > 0) G.market = Math.min(1.6, G.market + rnd(0.08, 0.2));
     else G.market = Math.max(0.72, G.market - rnd(0.01, 0.04));
+    report.ma = G.market;
 
     if (G.capital <= 0) { G.gameOver = true; }
 
@@ -669,17 +694,30 @@
       '<div class="d-caption">Risks that don’t go wrong together need less combined capital: spreading across classes shrinks premium risk, and premium, catastrophe and reserve risks combine sub-additively. Concentrate — in one class or one zone — and the credit disappears.</div>' +
       '</div>';
 
-    // PML by zone
+    // PML by zone — with an explicit reinsurance waterfall on the worst zone
     html += '<h2>Aggregations (PML by zone)</h2><div class="card">';
-    var any = false;
+    var any = false, worstZ = null, worstG = 0;
+    Object.keys(ZONES).forEach(function (z) {
+      var g0 = zonePML(z, null);
+      if (g0 > worstG) { worstG = g0; worstZ = z; }
+    });
     Object.keys(ZONES).forEach(function (z) {
       var g = zonePML(z, null);
       if (g <= 0) return;
       any = true;
-      var net = g * (1 - G.ri.qs); net = net - catRecovery(net);
+      var qsAmt = g * G.ri.qs;
+      var afterQs = g - qsAmt;
+      var layerRec = Math.min(G.ri.catL || 0, Math.max(0, afterQs - (G.ri.catA || 0)));
+      var net = afterQs - layerRec;
       var w = Math.min(100, 100 * net / Math.max(G.capital, 1));
       html += '<div class="gline"><span>' + esc(ZONES[z].name) + '</span><span>gross ' + money(g) + ' · net ' + money(net) + '</span></div>' +
-        '<div class="progress-track" style="margin:4px 0 10px"><div class="progress-fill' + (net > G.capital * 0.6 ? '' : ' done') + '" style="width:' + w + '%"></div></div>';
+        '<div class="progress-track" style="margin:4px 0 ' + (z === worstZ ? '4' : '10') + 'px"><div class="progress-fill' + (net > G.capital * 0.6 ? '' : ' done') + '" style="width:' + w + '%"></div></div>';
+      if (z === worstZ) {
+        html += '<div class="d-caption" style="margin:0 0 10px">Your peak zone, through the protections: gross ' + money(g) +
+          (qsAmt > 0 ? ' − quota share ' + money(qsAmt) : '') +
+          (layerRec > 0 ? ' − cat layer ' + money(layerRec) : (G.ri.catL ? ' (layer attaches above this level)' : ' (no cat layer)')) +
+          ' = <strong>net ' + money(net) + '</strong> — the number your capital requirement stands behind.</div>';
+      }
     });
     if (!any) html += '<p class="sub" style="margin:0">No catastrophe aggregation yet.</p>';
     html += '<div class="d-caption">Net PML shown after your quota share and cat layer. Bars measure net PML against capital — a full bar means one event could take most of it.</div></div>';
@@ -886,7 +924,9 @@
       (qsLocked ? '<strong>Treaties are annual: your ' + (G.ri.qs ? pct(G.ri.qs) : 'nil') + ' cession is locked until 1 January.</strong>' : 'Set it now for the year ahead.') + '</p>' +
       '<div class="gopt-row">' + qsOpts.map(function (q) {
         return '<button class="gopt' + (G.ri.qs === q ? ' active' : '') + '" data-qs="' + q + '"' + (qsLocked ? ' disabled' : '') + '>' + (q ? pct(q) : 'None') + '</button>';
-      }).join('') + '</div></div>' +
+      }).join('') + '</div>' +
+      (G.ri.qs > 0 ? '<div class="d-caption" style="margin-top:8px">Effect: cedes ~' + money(annualPremiumInForce() * G.ri.qs) + ' of annual premium (with ' + money(annualPremiumInForce() * G.ri.qs * QS_CEDING_COMM) + ' commission back) and frees ~' + money(Math.max(0, reqWithRi(0, G.ri.catA, G.ri.catL) - requiredCapital(null))) + ' of required capital.</div>' : '') +
+      '</div>' +
       '<div class="card"><h3 style="margin-top:0">Catastrophe excess of loss</h3>' +
       '<p class="sub">Per-event protection above an attachment, one reinstatement (annual limit = 2× the layer). Your worst net zone PML is <strong>' + money(worst * (1 - G.ri.qs)) + '</strong>. ' +
       'Pricing is seasonal — this quarter carries ' + pct(seasonW) + ' of the year’s hazard, so cover costs accordingly. No cheap wind cover bought only for Q3.</p>' +
@@ -894,9 +934,12 @@
       '<div id="cat-opts">' + catOpts.map(function (o, i) {
         var price = o.L ? catRiPrice(o.A, o.L) * seasonW : 0;
         var sel = G.ri.catA === o.A && G.ri.catL === o.L;
+        var freed = o.L ? Math.max(0, reqWithRi(G.ri.qs, 0, 0) - reqWithRi(G.ri.qs, o.A, o.L)) : 0;
         return '<button class="gopt wide' + (sel ? ' active' : '') + '" data-cat="' + i + '">' +
-          (o.L ? money(o.L) + ' xs ' + money(o.A) + ' — ' + money(price) + ' this quarter' : 'No cat cover') + '</button>';
-      }).join('') + '</div></div>' +
+          (o.L ? money(o.L) + ' xs ' + money(o.A) + ' — ' + money(price) + ' this quarter · frees ' + money(freed) + ' of capital' : 'No cat cover') + '</button>';
+      }).join('') + '</div>' +
+      '<div class="d-caption">“Frees capital” = the fall in your requirement versus holding no cat cover: the layer chops the top off your worst zone’s net PML, which is usually your dominant capital component. Cheap remote layers free little; layers biting near your PML free the most per pound.</div>' +
+      '</div>' +
       '<div class="card"><h3 style="margin-top:0">Capital actions</h3>' +
       '<p class="sub">A real board manages capital both ways: raise it when thin (costly — investors charge for rescue money), return it when fat (idle capital drags your return).</p>' +
       '<div class="btn-row">' +
@@ -967,6 +1010,19 @@
       html += '</div>';
     } else {
       html += '<div class="card"><p class="sub" style="margin:0">😌 A quiet quarter — no large losses or catastrophes.</p></div>';
+    }
+
+    if (r.mb && r.ma) {
+      var mchg = r.ma - r.mb;
+      html += '<div class="d-caption" style="margin:0 4px 14px">📉 Market index ' + r.mb.toFixed(2) + ' → ' + r.ma.toFixed(2) + ' — ' +
+        (mchg > 0.01 ? 'the losses harden the market: next quarter’s submissions and renewals will price higher. Hard markets are when discipline pays you back.'
+          : 'another quarter of competition softens rates. Watch new business adequacy — the benchmark itself is drifting down.') + '</div>';
+    }
+
+    if (!G.gameOver && solvency() < 1) {
+      html += '<div class="card" style="border-color:var(--amber)"><h3 style="margin-top:0">⚠️ Below required capital — writing suspended</h3>' +
+        '<p class="sub" style="margin:0">Your capital of ' + money(G.capital) + ' no longer covers the ' + money(requiredCapital(null)) + ' requirement. Three ways back: ' +
+        '<strong>raise capital</strong> (next decisions screen — expensive but fast), <strong>buy reinsurance</strong> (a cat layer or, at 1 January, a bigger quota share frees capital), or <strong>shrink</strong> — decline everything and let premium earn off until the requirement falls. This is “coming into line”, the hard way.</p></div>';
     }
 
     function line(label, val, sign) {
