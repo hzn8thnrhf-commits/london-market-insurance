@@ -636,7 +636,8 @@
   }
 
   function renderDashboard() {
-    var html = header();
+    var html = header() +
+      '<div class="d-caption" style="margin:-4px 4px 14px">💰 <strong>Capital</strong> = your own money standing behind every promise · <strong>Solvency</strong> = capital ÷ required capital (below 100% suspends writing) · <strong>Market</strong> = the price level (1.00 is average; higher = hard market = better rates on offer) · <strong>All-time P&L</strong> = every quarter’s result added up.</div>';
     var subsLeft = G.submissions.length - G.subIndex;
 
     if (G.phase === 'uw') {
@@ -680,6 +681,7 @@
         if (!b) return;
         html += '<div class="gline"><span>' + c.icon + ' ' + esc(c.name) + '</span><span>' + b.n + ' · ' + money(b.prem) + '</span></div>';
       });
+      html += '<div class="d-caption">“In force” = still providing cover (each policy runs four quarters). Premium in force is the annualised total you would earn if nothing changed. IBNR held is money already set aside for long-tail claims that have not yet surfaced — it belongs to future claimants, not to you, but it earns investment income while it waits.</div>';
     }
     html += '</div>';
 
@@ -725,7 +727,8 @@
     // reinsurance in force
     html += '<h2>Outwards reinsurance</h2><div class="card">' +
       '<div class="gline"><span>Quota share</span><span>' + (G.ri.qs ? pct(G.ri.qs) + ' ceded · ' + pct(QS_CEDING_COMM) + ' commission' : 'none') + '</span></div>' +
-      '<div class="gline"><span>Cat excess of loss</span><span>' + (G.ri.catL ? money(G.ri.catL) + ' xs ' + money(G.ri.catA) + ' · ' + money(Math.max(0, 2 * G.ri.catL - (G.ri.catUsed || 0))) + ' annual limit left' : 'none') + '</span></div></div>';
+      '<div class="gline"><span>Cat excess of loss</span><span>' + (G.ri.catL ? money(G.ri.catL) + ' xs ' + money(G.ri.catA) + ' · ' + money(Math.max(0, 2 * G.ri.catL - (G.ri.catUsed || 0))) + ' annual limit left' : 'none') + '</span></div>' +
+      '<div class="d-caption">The quota share cedes a slice of everything (premium and losses alike, commission back). The cat layer pays the part of any single event above the attachment, up to the limit — twice a year at most. Together they turn your gross book into your net one.</div></div>';
 
     // results history
     if (G.history.length) {
@@ -739,7 +742,7 @@
       G.history.slice(-8).reverse().forEach(function (h) {
         html += '<div class="gline"><span>Y' + yearOf(h.q) + ' Q' + qInYear(h.q) + '</span><span class="' + (h.profit >= 0 ? 'gpos' : 'gneg') + '">' + money(h.profit) + ' · CR ' + (100 * h.cr).toFixed(0) + '%</span></div>';
       });
-      html += '</div>';
+      html += '<div class="d-caption">CR = net combined ratio: losses plus expenses as a share of net earned premium. Below 100% the underwriting made money that quarter. Judge a volatile book on the run of quarters, never on one — a string of 85%s can be one event away from a 300%.</div></div>';
     }
 
     app().innerHTML = html;
@@ -831,6 +834,7 @@
       '<div class="gline"><span>Est. annual profit (your estimate)</span><span class="' + (estProfit >= 0 ? 'gpos' : 'gneg') + '">' + money(estProfit) + '</span></div>' +
       '<div class="gline"><span>Extra capital required</span><span>' + money(margCap) + '</span></div>' +
       '<div class="gline"><span>Return on marginal capital</span><span>' + rocTxt + '</span></div>' +
+      '<div class="d-caption" style="margin-top:6px">How the estimate is built: premium ' + money(r.premium) + ' × (100% − estimated loss ratio ' + (100 * r.estELR).toFixed(0) + '% − acquisition ' + (100 * r.acq).toFixed(0) + '%). The loss-ratio estimate comes from the rate versus benchmark only — it cannot see the risk’s hidden quality, which is why the loss record above deserves your own judgement.</div>' +
       '</div>' +
       '<div class="slip-impact"><div class="d-title">Portfolio impact (full line)</div>' +
       '<div class="gline"><span>Required capital</span><span>' + money(reqNow) + ' → ' + money(reqFull) + '</span></div>' +
@@ -855,6 +859,7 @@
       '</div>' +
       (suspended ? '<div class="d-caption" style="margin-top:8px">🚫 <strong>Regulatory suspension:</strong> you are below required capital. You cannot bind new business — decline the rest, then raise capital or buy reinsurance.</div>' :
         !canFull ? '<div class="d-caption" style="margin-top:8px">⚠️ Capital headroom is too tight for the full line — half it, decline, or buy more reinsurance next phase.</div>' : '') +
+      '<div class="d-caption" style="margin-top:8px">Unsure what any field means? <span class="review-link" data-ggo="#/game/guide">Open the guided tour ›</span></div>' +
       '</div>' +
       (G.subIndex > 0 ? '<button class="backlink" id="g-undo">↩︎ Undo previous decision</button>' : '');
 
@@ -938,7 +943,7 @@
         return '<button class="gopt wide' + (sel ? ' active' : '') + '" data-cat="' + i + '">' +
           (o.L ? money(o.L) + ' xs ' + money(o.A) + ' — ' + money(price) + ' this quarter · frees ' + money(freed) + ' of capital' : 'No cat cover') + '</button>';
       }).join('') + '</div>' +
-      '<div class="d-caption">“Frees capital” = the fall in your requirement versus holding no cat cover: the layer chops the top off your worst zone’s net PML, which is usually your dominant capital component. Cheap remote layers free little; layers biting near your PML free the most per pound.</div>' +
+      '<div class="d-caption">“Frees capital” = the fall in your requirement versus holding no cat cover: the layer chops the top off your worst zone’s net PML, which is usually your dominant capital component. Reading the options: a <strong>lower attachment</strong> means protection starts sooner (dearer, frees more); a <strong>bigger limit</strong> caps more of the tail. The best buy is usually the layer whose capital freed is largest relative to its premium — divide one by the other before choosing.</div>' +
       '</div>' +
       '<div class="card"><h3 style="margin-top:0">Capital actions</h3>' +
       '<p class="sub">A real board manages capital both ways: raise it when thin (costly — investors charge for rescue money), return it when fat (idle capital drags your return).</p>' +
@@ -1025,27 +1030,46 @@
         '<strong>raise capital</strong> (next decisions screen — expensive but fast), <strong>buy reinsurance</strong> (a cat layer or, at 1 January, a bigger quota share frees capital), or <strong>shrink</strong> — decline everything and let premium earn off until the requirement falls. This is “coming into line”, the hard way.</p></div>';
     }
 
-    function line(label, val, sign) {
+    function line(label, val, sign, exp) {
       var cls = sign === '+' ? 'gpos' : sign === '-' ? 'gneg' : '';
-      return '<div class="gline"><span>' + label + '</span><span class="' + cls + '">' + (sign === '-' ? '−' : sign === '+' ? '+' : '') + money(Math.abs(val)).replace('−', '') + '</span></div>';
+      return '<div class="gline"><span>' + label + '</span><span class="' + cls + '">' + (sign === '-' ? '−' : sign === '+' ? '+' : '') + money(Math.abs(val)).replace('−', '') + '</span></div>' +
+        (exp ? '<div class="gexp">' + exp + '</div>' : '');
     }
 
-    html += '<div class="card">' +
-      line('Premium earned', r.earned, '+') +
-      (r.qsCededPrem ? line('Quota share ceded', r.qsCededPrem, '-') + line('Ceding commission', r.qsCommission, '+') : '') +
-      line('Attritional & large losses (net)', (r.attr + r.large) * (1 - G.ri.qs), '-') +
-      (r.catGross ? line('Catastrophe losses (net of all reinsurance)', r.catNet, '-') : '') +
-      (r.ibnrProv ? line('IBNR provisioned for long-tail business', r.ibnrProv, '-') : '') +
-      (r.strengthening ? line('Reserve strengthening (claims above IBNR held)', r.strengthening, '-') : '') +
-      (r.releases ? line('Reserve releases (clean years closed)', r.releases, '+') : '') +
-      line('Acquisition costs', r.acqCost, '-') +
-      line('Operating expenses', r.opex, '-') +
-      (r.riCatPremium ? line('Cat reinsurance premium', r.riCatPremium, '-') : '') +
-      (r.reinstatement ? line('Reinstatement premium', r.reinstatement, '-') : '') +
-      line('Investment income', r.invIncome, '+') +
+    html += '<div class="card" id="pnl-card">' +
+      '<button class="calc-toggle" id="rep-explain" type="button" style="padding:0 0 8px">ⓘ Explain every line</button>' +
+      line('Premium earned', r.earned, '+',
+        'One quarter’s slice of each in-force policy’s annual premium — you only “earn” premium as you actually provide the cover, so a policy written today contributes for four quarters.') +
+      (r.qsCededPrem ? line('Quota share ceded', r.qsCededPrem, '-',
+        'Your quota share partner takes this fixed share of every premium — and stands behind the same share of every loss below.') +
+        line('Ceding commission', r.qsCommission, '+',
+        'The reinsurer hands back ' + pct(QS_CEDING_COMM) + ' of what it took, to cover the acquisition costs you already paid on that business.') : '') +
+      line('Attritional & large losses (net)', (r.attr + r.large) * (1 - G.ri.qs), '-',
+        'The routine claims every book produces (attritional) plus any single big losses this quarter — after the quota share has taken its share. This is the “cost of goods sold” of insurance.') +
+      (r.catGross ? line('Catastrophe losses (net of all reinsurance)', r.catNet, '-',
+        'Event losses after the quota share’s slice and your cat layer’s recovery. Compare this with the gross figures in the event log above to see your protections working.') : '') +
+      (r.ibnrProv ? line('IBNR provisioned for long-tail business', r.ibnrProv, '-',
+        'Money set aside now for casualty-style claims that will only surface years from today. It reduces this quarter’s profit but it is not lost — clean years hand it back later as releases.') : '') +
+      (r.strengthening ? line('Reserve strengthening (claims above IBNR held)', r.strengthening, '-',
+        'Late claims came in bigger than the reserves held for them — old underwriting years reaching forward to hurt today’s result. Persistent strengthening is the classic sign of past underpricing.') : '') +
+      (r.releases ? line('Reserve releases (clean years closed)', r.releases, '+',
+        'Long-tail policies whose claims window closed without using their reserves — the IBNR comes back to profit. The delayed reward for disciplined casualty underwriting.') : '') +
+      line('Acquisition costs', r.acqCost, '-',
+        'Brokerage and commissions, spread over each policy’s life in step with the premium earning — matching the cost to the revenue it bought.') +
+      line('Operating expenses', r.opex, '-',
+        'Staff, systems and running costs: a fixed base plus roughly 7% of earned premium. Fixed costs are why a too-small book struggles to break even.') +
+      (r.riCatPremium ? line('Cat reinsurance premium', r.riCatPremium, '-',
+        'This quarter’s cost of your catastrophe layer — weighted by how much of the year’s hazard falls in this quarter, so hurricane-season cover costs the most.') : '') +
+      (r.reinstatement ? line('Reinstatement premium', r.reinstatement, '-',
+        'The price of restoring layer limit your recoveries consumed — premium that falls due precisely because you were hit.') : '') +
+      line('Investment income', r.invIncome, '+',
+        'About ' + (100 * INV_YIELD_QTR).toFixed(1) + '% a quarter earned on your capital plus the “float” — premium received but not yet paid out, and reserves held. The longer the tail, the harder the float works.') +
       '<div class="gline gtotal"><span>Quarter result</span><span class="' + (r.profit >= 0 ? 'gpos' : 'gneg') + '">' + money(r.profit) + '</span></div>' +
+      '<div class="gexp">Everything above, netted. The result flows straight into capital — there is no separate pot: this quarter’s profit is next quarter’s risk-bearing capacity.</div>' +
       '<div class="gline"><span>Net combined ratio</span><span>' + (100 * r.cr).toFixed(0) + '%</span></div>' +
+      '<div class="gexp">(All losses + expenses − commissions) ÷ net earned premium. Below 100% the underwriting itself made money; above 100% you relied on investment income — or lost outright.</div>' +
       '<div class="gline"><span>Capital</span><span>' + money(r.capitalAfter) + '</span></div>' +
+      '<div class="gexp">Your buffer against the next bad quarter. The solvency ratio in the header compares it with what the book requires.</div>' +
       '</div>';
 
     var yr = yearOf(r.q);
@@ -1081,6 +1105,12 @@
 
     app().innerHTML = html;
     bindCommon();
+    var re = document.getElementById('rep-explain');
+    if (re) re.addEventListener('click', function () {
+      var card = document.getElementById('pnl-card');
+      card.classList.toggle('explain-on');
+      re.textContent = card.classList.contains('explain-on') ? 'ⓘ Hide the explanations' : 'ⓘ Explain every line';
+    });
     var n = document.getElementById('g-next');
     if (n) n.addEventListener('click', function () { nextQuarter(); go('#/game'); });
     var r2 = document.getElementById('g-restart2');

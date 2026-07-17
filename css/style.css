@@ -550,6 +550,12 @@ p { line-height: 1.55; }
 .gopt.wide { display: block; width: 100%; margin-bottom: 8px; text-align: left; }
 .gopt.active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
 
+.gexp {
+  display: none; font-size: 0.72rem; color: var(--text2);
+  margin: -3px 0 7px; line-height: 1.45; padding-left: 2px;
+}
+.explain-on .gexp { display: block; }
+
 .renewal-pill {
   display: block; margin: 2px 0 10px; font-size: 0.76rem; font-weight: 600;
   color: var(--amber); background: var(--amber-soft);
