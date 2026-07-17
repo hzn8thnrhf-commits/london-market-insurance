@@ -232,6 +232,7 @@
     if (page === 'quiz' && parts[1] && parts[2]) return renderQuiz(parts[1], parts[2]);
     if (page === 'glossary') return renderGlossary();
     if (page === 'awards') return renderAwards();
+    if (page === 'map') return renderMap(parts[1]);
     renderHome();
   }
 
@@ -290,6 +291,12 @@
         '<div class="grow"><div class="mod-title">Course complete — congratulations!</div>' +
         '<div class="mod-meta">Revisit any module to keep your knowledge sharp.</div></div></div></div>';
     }
+
+    html += '<div class="card tappable" style="margin-top:12px" data-go="#/map">' +
+      '<div class="row"><div class="mod-icon">🗺️</div>' +
+      '<div class="grow"><div class="mod-title">Connections map</div>' +
+      '<div class="mod-meta">Pick a class and see how client, brokers, capital, reinsurance and claims all fit together.</div></div>' +
+      '<div class="chev">›</div></div></div>';
 
     html += '<h2>Modules</h2>';
     MODULES.forEach(function (m) { html += moduleTile(m); });
@@ -446,6 +453,17 @@
       if (isNum) {
         html += '<input class="num-input" id="num-answer" type="text" inputmode="decimal" autocomplete="off" placeholder="Your answer">';
         if (q.unit) html += '<div class="num-unit">Answer in ' + esc(q.unit) + (q.tol ? ' · small rounding differences are accepted' : '') + '</div>';
+        html += '<button class="calc-toggle" id="calc-toggle" type="button">🧮 Show calculator</button>' +
+          '<div class="calc" id="calc" hidden>' +
+          '<div class="calc-display" id="calc-display">0</div>' +
+          '<div class="calc-grid" id="calc-grid">' +
+          '<button class="op" data-k="C">C</button><button class="op" data-k="(">(</button><button class="op" data-k=")">)</button><button class="op" data-k="back">⌫</button>' +
+          '<button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button><button class="op" data-k="/">÷</button>' +
+          '<button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button><button class="op" data-k="*">×</button>' +
+          '<button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button><button class="op" data-k="-">−</button>' +
+          '<button data-k="0">0</button><button data-k=".">.</button><button class="op" data-k="%">%</button><button class="op" data-k="+">+</button>' +
+          '<button class="op wide" data-k="=">=</button><button class="use wide" data-k="use">Use answer</button>' +
+          '</div></div>';
       } else {
         q.options.forEach(function (opt, i) {
           html += '<button class="opt" data-i="' + i + '">' + opt + '</button>';
@@ -464,6 +482,46 @@
         var input = document.getElementById('num-answer');
         input.focus();
         input.addEventListener('keydown', function (e) { if (e.key === 'Enter') action.click(); });
+
+        // mini calculator
+        var calcExpr = '';
+        var calcBox = document.getElementById('calc');
+        var calcDisp = document.getElementById('calc-display');
+        var calcToggle = document.getElementById('calc-toggle');
+        function calcEval(s) {
+          s = s.replace(/%/g, '/100');
+          if (!/^[0-9+\-*/(). ]*$/.test(s) || s.trim() === '') return null;
+          try {
+            var v = Function('"use strict";return (' + s + ')')();
+            return (typeof v === 'number' && isFinite(v)) ? Math.round(v * 1e8) / 1e8 : null;
+          } catch (e) { return null; }
+        }
+        function calcShow() {
+          calcDisp.textContent = calcExpr === '' ? '0'
+            : calcExpr.replace(/\*/g, '×').replace(/\//g, '÷').replace(/-/g, '−');
+        }
+        calcToggle.addEventListener('click', function () {
+          calcBox.hidden = !calcBox.hidden;
+          calcToggle.textContent = calcBox.hidden ? '🧮 Show calculator' : '🧮 Hide calculator';
+        });
+        document.getElementById('calc-grid').addEventListener('click', function (e) {
+          var k = e.target.getAttribute && e.target.getAttribute('data-k');
+          if (!k) return;
+          if (k === 'C') calcExpr = '';
+          else if (k === 'back') calcExpr = calcExpr.slice(0, -1);
+          else if (k === '=' || k === 'use') {
+            var v = calcEval(calcExpr);
+            if (v !== null) {
+              calcExpr = String(v);
+              if (k === 'use' && !answered) {
+                input.value = String(v);
+                calcBox.hidden = true;
+                calcToggle.textContent = '🧮 Show calculator';
+              }
+            }
+          } else calcExpr += k;
+          calcShow();
+        });
         action.addEventListener('click', function () {
           if (answered) { advance(); return; }
           var raw = input.value.replace(/[,\s%£$€]/g, '');
@@ -646,6 +704,51 @@
     });
     html += '</div>';
     app().innerHTML = html;
+  }
+
+  /* ---------- connections map ---------- */
+
+  function lessonChip(ref) {
+    var parts = ref.split('/');
+    var m = findModule(parts[0]);
+    if (!m) return '';
+    var lesson = null;
+    m.lessons.forEach(function (l) { if (l.id === parts[1]) lesson = l; });
+    if (!lesson) return '';
+    return '<span class="lchip" data-go="#/lesson/' + m.id + '/' + lesson.id + '">' + m.icon + ' ' + esc(lesson.title) + '</span>';
+  }
+
+  function renderMap(classId) {
+    setTab('#/map');
+    var maps = window.LMA_CLASSMAPS || [];
+    if (!maps.length) return renderHome();
+    var current = maps[0];
+    maps.forEach(function (c) { if (c.id === classId) current = c; });
+
+    var html = '<h1>Connections</h1>' +
+      '<p class="sub">Pick a class of business and follow it end to end — client, brokers, placement, premium, exposure management, capital, outwards reinsurance, claims and reserving — with the quirks of that class at each step.</p>' +
+      '<div class="class-chips">';
+    maps.forEach(function (c) {
+      html += '<button class="cchip' + (c.id === current.id ? ' active' : '') + '" data-mapclass="' + c.id + '">' + c.icon + ' ' + esc(c.name) + '</button>';
+    });
+    html += '</div>';
+
+    html += '<div class="card" style="padding:14px 15px;margin-bottom:16px"><div class="mod-title">' + current.icon + ' ' + esc(current.name) + '</div>' +
+      '<div class="map-desc" style="margin-top:5px">' + esc(current.intro) + '</div></div>';
+
+    current.stages.forEach(function (s) {
+      html += '<div class="map-stage"><div class="map-rail"><div class="map-dot">' + s.icon + '</div></div>' +
+        '<div class="map-body"><div class="map-title">' + esc(s.title) + '</div>' +
+        '<div class="map-desc">' + s.desc + '</div>';
+      (s.links || []).forEach(function (ref) { html += lessonChip(ref); });
+      html += '</div></div>';
+    });
+
+    app().innerHTML = html;
+    bindGoLinks();
+    document.querySelectorAll('.cchip').forEach(function (chip) {
+      chip.addEventListener('click', function () { go('#/map/' + chip.getAttribute('data-mapclass')); });
+    });
   }
 
   /* ---------- wiring ---------- */

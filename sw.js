@@ -1,5 +1,5 @@
 /* London Market Academy — service worker: offline-first cache */
-var CACHE = 'lma-v3';
+var CACHE = 'lma-v4';
 var ASSETS = [
   './',
   './index.html',
@@ -18,6 +18,8 @@ var ASSETS = [
   './js/content/module-mga.js',
   './js/content/module-bespoke.js',
   './js/content/module-advanced.js',
+  './js/content/module-advanced2.js',
+  './js/content/classmaps.js',
   './js/content/glossary.js',
   './manifest.webmanifest',
   './icons/icon-180.png',

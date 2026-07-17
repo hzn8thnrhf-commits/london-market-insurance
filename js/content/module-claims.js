@@ -87,6 +87,15 @@ window.LMA_MODULES.push({
 <li><strong>Reserve releases / strengthening</strong> — prior-year estimates revised down (profit) or up (loss) as experience emerges. Persistent one-directional revisions reveal systematic bias.</li>
 <li><strong>Accident year vs underwriting year</strong> — grouping claims by when the loss occurred versus by the year of account of the policy. London market reserving traditionally works on underwriting year; much external reporting uses accident year.</li>
 </ul>
+<div class="diagram">
+<div class="d-title">Ultimate claims = paid + case reserves + IBNR</div>
+<div class="bar-split">
+<span class="s-paid" style="flex:8">Paid £8m</span>
+<span class="s-case" style="flex:22">Case £22m</span>
+<span class="s-ibnr" style="flex:45">IBNR £45m</span>
+</div>
+<div class="d-caption">A young long-tail year: the visible claims (paid + case = £30m) are less than half the £75m ultimate — the iceberg is mostly under water.</div>
+</div>
 <div class="example">
 <div class="ex-label">Worked example</div>
 <p>A casualty account’s 2023 underwriting year, viewed at the end of 2025: paid £8m, case reserves £22m, so incurred £30m. The actuary’s development analysis says accounts like this are typically only 40% reported at this maturity: ultimate ≈ 30 ÷ 0.40 = <strong>£75m</strong>, requiring IBNR of 75 − 30 = <strong>£45m</strong> — one and a half times the visible incurred. Booking only the visible claims would overstate profit by £45m.</p>

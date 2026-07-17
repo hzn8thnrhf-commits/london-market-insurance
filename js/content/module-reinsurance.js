@@ -148,6 +148,15 @@ window.LMA_MODULES.push({
 <p>A layer’s limit can be exhausted by one event. <strong>Reinstatements</strong> restore it — typically a stated number of times, at a stated additional premium (recall the Premium module: pro rata to limit consumed). A catastrophe layer with “2 reinstatements at 100%” gives, in effect, three limits across the year, with the second and third paid for as used. When reinstatements run out, the cedant is bare for the rest of the period — a real risk in multi-event years like 2017’s triple hurricanes.</p>
 <h3>Net retained loss</h3>
 <p>The point of the whole structure is to control the <strong>net loss</strong>: what remains with the cedant after all recoveries. Computing net positions across a tower — including co-participations and reinstatement premiums payable — is a daily task in exposure, claims and finance teams.</p>
+<div class="diagram">
+<div class="d-title">A catastrophe tower — losses fill it from the bottom</div>
+<div class="tower">
+<div class="tlayer">Layer 2 — £25m xs £25m<small>remote, low rate on line</small></div>
+<div class="tlayer">Layer 1 — £15m xs £10m<small>working layer, higher rate on line</small></div>
+<div class="tlayer retention">Retention — first £10m<small>the cedant’s own money, every event</small></div>
+</div>
+<div class="d-caption">A £42m event: retention absorbed first, Layer 1 fully consumed, Layer 2 pierced by £17m — recoveries net of any co-participation.</div>
+</div>
 <div class="example">
 <div class="ex-label">Worked example</div>
 <p>A cedant retains £10m per event and buys a tower: Layer 1 £15m xs £10m, Layer 2 £25m xs £25m, each with 10% co-participation retained. A hurricane causes £42m of gross loss. Layer 1 pays 90% × £15m = £13.5m; Layer 2 is pierced by 42 − 25 = £17m, paying 90% × £17m = £15.3m. Total recoveries £28.8m; net loss = 42 − 28.8 = <strong>£13.2m</strong> (the £10m retention plus 10% of each layer’s contribution), before reinstatement premiums due.</p>

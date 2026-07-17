@@ -98,6 +98,15 @@ window.LMA_MODULES.push({
 <li><strong>The Central Fund</strong> — a mutual pool built from levies on all members. If a member cannot pay valid claims, the Central Fund steps in so the policyholder is still paid.</li>
 </ol>
 <p>This chain is why the whole of Lloyd’s shares a single, strong financial-strength rating: the weakest syndicate’s policyholders are still protected by the mutual layer.</p>
+<div class="diagram">
+<div class="d-title">The chain of security — used strictly in order</div>
+<div class="flow-h">
+<span class="fnode">1️⃣ Syndicate assets<small>premium trust funds</small></span><span class="farrow">→</span>
+<span class="fnode">2️⃣ Funds at Lloyd’s<small>member capital</small></span><span class="farrow">→</span>
+<span class="fnode gold">3️⃣ Central Fund<small>mutual backstop</small></span>
+</div>
+<div class="d-caption">A claim only reaches the next link when the previous one is exhausted — the policyholder is paid either way.</div>
+</div>
 <div class="example">
 <div class="ex-label">Worked example</div>
 <p>Syndicate 9999 has a catastrophic year: £900m of claims against £600m of syndicate-level assets. The shortfall of £300m is called first from its members’ funds at Lloyd’s, say £250m lodged. The remaining £50m would be met by the Central Fund — policyholders are paid in full, and Lloyd’s then pursues the member for reimbursement. The failure hurts the member, not the claimant.</p>
@@ -157,6 +166,18 @@ window.LMA_MODULES.push({
 <p>Brokers deliberately gather more commitments than 100% — an oversubscription cushion. If underwriters write 130% of the risk in total, every line is proportionally reduced (“signed down”) so the shares sum to exactly 100%:</p>
 <p style="text-align:center"><strong>signed line = written line × (100 ÷ total written)</strong></p>
 <p>An underwriter’s premium and claim share follow the <em>signed</em> line, not what they originally wrote. (The signing-down mechanics get a full lesson in the Premium module.)</p>
+<div class="diagram">
+<div class="d-title">How a risk gets placed</div>
+<div class="flow-h">
+<span class="fnode">🏭 Insured<small>needs cover</small></span><span class="farrow">→</span>
+<span class="fnode">🤝 Local broker<small>client’s agent</small></span><span class="farrow">→</span>
+<span class="fnode">🎩 London broker<small>builds the slip</small></span><span class="farrow">→</span>
+<span class="fnode gold">✍️ Lead underwriter<small>sets terms &amp; price</small></span><span class="farrow">→</span>
+<span class="fnode">👥 Followers<small>subscribe lines</small></span><span class="farrow">→</span>
+<span class="fnode">✅ 100% bound<small>signed down pro rata</small></span>
+</div>
+<div class="d-caption">Every later stage — premium, claims, capital — flows back through this chain: each carrier’s share of everything is its signed line.</div>
+</div>
 <h3>Binding and after</h3>
 <p>Once 100% is subscribed the contract is bound. Details flow to the market’s central processing bureau for checking, signing and settlement (next lessons), premium moves from client through broker to insurers, and the policy takes effect. If a claim later arises, the same lead-and-follow logic applies to agreeing it.</p>
 <div class="example">

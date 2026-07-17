@@ -148,6 +148,17 @@ window.LMA_MODULES.push({
 <p>Members lodge assets centrally as <strong>Funds at Lloyd’s</strong> — cash, securities or letters of credit held in trust — to meet their Economic Capital Assessment. Twice a year the market goes through <strong>coming into line</strong>: every member must demonstrate its funds meet the requirement, topping up if losses or plan growth have raised it. A member that cannot come into line cannot continue underwriting.</p>
 <h3>Capital efficiency: why write at Lloyd’s?</h3>
 <p>The uplifted requirement sounds expensive, but Lloyd’s offers offsetting advantages: the licence network (trade in 200+ territories without local subsidiaries), the shared rating, and diversification credit within a member’s own portfolio of syndicate participations. For many capital providers the package is more efficient than building a standalone insurer.</p>
+<div class="diagram">
+<div class="d-title">The Lloyd’s capital chain</div>
+<div class="flow-h">
+<span class="fnode">🧮 Syndicate model<small>1-in-200, ultimate</small></span><span class="farrow">→</span>
+<span class="fnode">🔍 Lloyd’s review<small>may load weak numbers</small></span><span class="farrow">→</span>
+<span class="fnode gold">× 1.35 uplift<small>Economic Capital Assessment</small></span><span class="farrow">→</span>
+<span class="fnode">🏦 Funds at Lloyd’s<small>assets lodged in trust</small></span><span class="farrow">→</span>
+<span class="fnode">✅ Coming into line<small>tested twice a year</small></span>
+</div>
+<div class="d-caption">Capital follows the plan: grow the plan or suffer losses, and the requirement — and the member’s funding call — moves with it.</div>
+</div>
 <div class="example">
 <div class="ex-label">Worked example</div>
 <p>A syndicate’s approved plan produces an ultimate one-in-200 requirement of £200m. Lloyd’s applies the 35% uplift: members backing the syndicate must collectively hold an Economic Capital Assessment of £200m × 1.35 = <strong>£270m</strong> as Funds at Lloyd’s. Mid-year, catastrophe losses raise the requirement to £230m ultimate (£310.5m uplifted): at the next coming into line, members must find an extra £40.5m or the syndicate must shrink its plan.</p>

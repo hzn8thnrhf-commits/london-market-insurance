@@ -4,7 +4,7 @@ An installable, offline-capable web app that teaches how the **London insurance 
 
 ## What's inside
 
-**13 modules · 64 lessons · ~265 quiz questions (numeric + qualitative) · 31 achievements · 130+ term glossary**
+**14 modules · 70 lessons · ~290 quiz questions (numeric + qualitative) · 32 achievements · 130+ term glossary — plus a Connections map, inline diagrams and a built-in quiz calculator**
 
 | # | Module | Covers |
 |---|--------|--------|
@@ -21,6 +21,9 @@ An installable, offline-capable web app that teaches how the **London insurance 
 | 11 | Pens & Paper: The Underwriter–Capital Split | Managing general underwriters & framework economics, fronting, MGA platforms/incubators, catastrophe bonds/sidecars/collateralised reinsurance, lead-vs-follow economics |
 | 12 | Bespoke & Structured Risk Solutions | One-off deal underwriting, credit enhancement & bank capital relief, transactional liability (warranty & indemnity, tax, contingent legal), loss portfolio transfers & adverse development covers, a deal-lifecycle capstone |
 | 13 | Advanced Practitioner | Exposure curves & increased limit factors, sliding scales & swing rates, capital allocation (co-measures, one-year vs ultimate), reserving diagnostics & tail factors, contract law (fair presentation, follow the settlements), float & discounting economics |
+| 14 | Advanced Practitioner II | Building a view of catastrophe risk (model blending & validation), catastrophe layer pricing from the curve, reserve ranges (Mack & bootstrap), the syndicate planning year, portfolio management information, global programmes & captives |
+
+Plus a **Connections** tab: pick a class of business and follow it end to end — client → brokers → placement → premium → exposure management → capital → outwards reinsurance → claims → reserving — with class-specific idiosyncrasies at each stage and links into the relevant lessons. Numeric quiz questions include a built-in mini calculator, and key lessons carry inline flow diagrams (placement chain, premium waterfall, reinsurance tower, chain of security, capital chain, IBNR iceberg).
 
 Every lesson has worked numeric examples, a key-point summary, and a "test your knowledge" quiz (pass at 70%+). Acronyms are avoided or defined where first used, and the glossary explains every market term in plain English. Progress and awards are saved on your device (browser local storage) — no account, no server.
 

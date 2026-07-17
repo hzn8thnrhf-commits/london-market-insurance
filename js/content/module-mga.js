@@ -20,6 +20,16 @@ window.LMA_MODULES.push({
 <li><strong>The balance-sheet carrier</strong> issues the policies, holds the reserves and capital, buys (or directs) the outwards reinsurance, and answers to prudential regulators and rating agencies for solvency.</li>
 <li>A <strong>framework agreement</strong> — typically long-term, sometimes exclusive in both directions — governs the relationship: classes and volumes delegated, underwriting guidelines, referral triggers, data and audit rights, and above all the economics.</li>
 </ul>
+<div class="diagram">
+<div class="d-title">The underwriter–capital split</div>
+<div class="flow-h">
+<span class="fnode">🤝 Brokers &amp; clients<small>bring the risk</small></span><span class="farrow">→</span>
+<span class="fnode gold">🖊️ Underwriting company<small>holds the pen · earns commissions</small></span><span class="farrow">→</span>
+<span class="fnode">🏦 Balance-sheet carrier<small>issues paper · holds capital &amp; reserves</small></span><span class="farrow">→</span>
+<span class="fnode">🛡️ Outwards reinsurance<small>shapes the carrier’s net</small></span>
+</div>
+<div class="d-caption">The framework agreement is the hinge: it delegates the pen one way and sends premium (less commissions) the other.</div>
+</div>
 <h3>The economics</h3>
 <p>The underwriting company is paid like a supercharged coverholder: a <strong>ceding/underwriting commission</strong> on premium written (covering its costs plus a margin) and usually a <strong>profit commission</strong> — a share of the underwriting profit it generates for the carrier, often above a threshold loss ratio. The carrier keeps the balance of underwriting profit plus investment income on the reserves, and carries the downside.</p>
 <h3>Why anyone does this</h3>

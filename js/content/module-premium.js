@@ -25,6 +25,17 @@ window.LMA_MODULES.push({
 </ul>
 <h3>One more meaning of “net”</h3>
 <p>Beware the market’s most overloaded word. “Net premium” can also mean <strong>net of outwards reinsurance</strong> — gross premium minus what the insurer spends buying its own protection. Reports often distinguish <em>gross written premium</em>, <em>net written premium</em> (after reinsurance spend) and premium <em>net of acquisition costs</em>. When someone says “net”, always ask: net of what?</p>
+<div class="diagram">
+<div class="d-title">The premium waterfall</div>
+<div class="flow-h">
+<span class="fnode">💷 Gross written<small>£1,000,000</small></span><span class="farrow">→</span>
+<span class="fnode">− Brokerage 20%<small>£200,000 to broker</small></span><span class="farrow">→</span>
+<span class="fnode">Net of acquisition<small>£800,000</small></span><span class="farrow">→</span>
+<span class="fnode">− Outwards reinsurance<small>£150,000 ceded</small></span><span class="farrow">→</span>
+<span class="fnode gold">Net net<small>£650,000 retained</small></span>
+</div>
+<div class="d-caption">Three legitimate “premiums” from one contract — always ask which point on the waterfall a number refers to.</div>
+</div>
 <div class="example">
 <div class="ex-label">Worked example</div>
 <p>A property risk carries gross written premium of <strong>£1,000,000</strong> with brokerage at 20%. The insurer receives £800,000. The insurer separately spends £150,000 of its own money on outwards reinsurance attributable to this contract. So: gross written £1,000,000 → net of brokerage £800,000 → net of brokerage <em>and</em> reinsurance £650,000. Three legitimate “premiums”, one contract — and if a pricing actuary assumed 15% brokerage instead of 20%, the profit estimate would be out by £50,000 on this one risk alone.</p>
