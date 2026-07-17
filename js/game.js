@@ -79,7 +79,7 @@
       q: 1, capital: START_CAPITAL, allTime: 0, yearProfits: {}, history: [],
       policies: [], nextId: 1,
       submissions: [], subIndex: 0, phase: 'uw',   // uw -> ri -> report
-      ri: { qs: 0, catA: 0, catL: 0 },
+      ri: { qs: 0, catA: 0, catL: 0, catUsed: 0 },
       market: 1.0, gameOver: false, lastReport: null, dividends: 0, raised: 0,
       records: { catsSurvived: 0, bestQuarter: null, worstQuarter: null, writtenCount: 0 }
     };
@@ -108,25 +108,30 @@
   function genRisk() {
     var cls = pick(CLASSES);
     var market = G.market;
-    var adequacy = market * rnd(0.72, 1.32);           // hidden quality of the price
+    // Two independent, hidden drivers:
+    //  - priceAdq: how well-priced the deal is vs benchmark (visible via the rate)
+    //  - quality: how good the underlying risk is (only hinted at by the loss record)
+    var priceAdq = rnd(0.72, 1.32);
+    var quality = rnd(0.82, 1.22);
     var limit = Math.round(rnd(cls.limits[0], cls.limits[1]) / 250000) * 250000;
     var midRate = (cls.rateOnLimit[0] + cls.rateOnLimit[1]) / 2;
-    var rate = midRate * adequacy * rnd(0.97, 1.03);
+    var rate = midRate * market * priceAdq * rnd(0.99, 1.01);
     var premium = Math.round(limit * rate / 1000) * 1000;
     var acq = rnd(cls.acq[0], cls.acq[1]);
     var zone = cls.zone ? (cls.altZone && Math.random() < 0.4 ? cls.altZone : cls.zone) : null;
     var dmg = zone ? rnd(cls.dmg[0], cls.dmg[1]) : 0;
-    var trueELR = Math.min(1.6, cls.baseELR / (adequacy));
+    var trueELR = Math.min(1.6, cls.baseELR * quality / priceAdq);
     var tiv = null, attach = 0;
     if (cls.id === 'pdf') tiv = Math.round(limit * rnd(2.5, 6) / 1e6) * 1e6;
     if (cls.id === 'energy') tiv = Math.round(limit * rnd(8, 20) / 1e6) * 1e6;
     if (cls.id === 'terror') tiv = Math.round(limit * rnd(1.5, 3) / 1e6) * 1e6;
     if (cls.id === 'casualty' || cls.id === 'dno') attach = Math.round(limit * rnd(1, 3) / 1e6) * 1e6;
 
-    // 5-year loss history correlated with (inverse) quality
+    // 5-year loss history driven by the hidden risk QUALITY (not the price):
+    // this is the signal the rate alone cannot give you
     var hist = [], histLoss = 0;
     for (var y = 0; y < 5; y++) {
-      var p = 0.16 + Math.max(0, (1.05 - adequacy)) * 0.55;
+      var p = 0.08 + Math.max(0, quality - 0.92) * 0.75;
       if (Math.random() < p) {
         var amt = Math.round(premium * rnd(0.3, 2.6) / 50000) * 50000;
         hist.push(amt); histLoss += amt;
@@ -134,9 +139,10 @@
     }
     var histLR = histLoss / (premium * 5);
 
-    // the underwriter's own (imperfect) estimate of the loss ratio, from rate vs benchmark
+    // the underwriter's estimate: knows the price vs benchmark, does NOT know the
+    // hidden risk quality — that judgement must come from reading the loss record
     var benchRate = midRate * market;
-    var estELR = Math.min(1.5, cls.baseELR / (rate / benchRate)) * rnd(0.9, 1.1);
+    var estELR = Math.min(1.5, cls.baseELR / (rate / benchRate)) * rnd(0.95, 1.05);
 
     return {
       id: G.nextId++, classId: cls.id, name: pick(NAMES[cls.id]),
@@ -223,6 +229,21 @@
   function requiredCapital(extra) { return capitalBreakdown(extra).total; }
   function solvency() { return G.capital / requiredCapital(null); }
 
+  // Share of the year's catastrophe hazard sitting in this quarter, for the
+  // portfolio's dominant zone — so cover during hurricane season costs
+  // proportionally more, and season-only buying earns no free lunch.
+  function catSeasonWeight() {
+    var worstZ = null, worstV = 0;
+    Object.keys(ZONES).forEach(function (z) {
+      var g = zonePML(z, null) * (1 - G.ri.qs);
+      if (g > worstV) { worstV = g; worstZ = z; }
+    });
+    if (!worstZ) return 0.25;
+    var pq = ZONES[worstZ].probQ;
+    var tot = pq[0] + pq[1] + pq[2] + pq[3];
+    return tot > 0 ? pq[qInYear(G.q) - 1] / tot : 0.25;
+  }
+
   function catRiPrice(A, L) {
     // annual rate on line rises as the layer sits closer to the portfolio PML
     var worst = 0;
@@ -244,7 +265,7 @@
     var qy = qInYear(G.q);
     var earned = 0, acqCost = 0, attr = 0, large = 0, catGross = 0, catNet = 0;
     var ibnrProv = 0, strengthening = 0, releases = 0;
-    var riCatPremium = catRiPrice(G.ri.catA, G.ri.catL) / 4;
+    var riCatPremium = catRiPrice(G.ri.catA, G.ri.catL) * catSeasonWeight();
     var reinstatement = 0, qsCommission = 0, qsCededPrem = 0, qsRecovered = 0;
     var CLS = {};
     CLASSES.forEach(function (c) { CLS[c.id] = c; });
@@ -256,7 +277,7 @@
       var e = (p.premium / 4) * p.share;
       earned += e;
       acqCost += (p.premium * p.share * p.acq) / 4;   // acquisition amortised with earning
-      attr += e * p.trueELR * 0.5 * rnd(0.4, 1.7);
+      attr += e * p.trueELR * (p.classId === 'terror' ? 0.15 : 0.5) * rnd(0.4, 1.7);
       if (p.tail === 0) {
         var largeProb = 0.1 * p.trueELR * p.premium / p.limit;
         if (Math.random() < largeProb) {
@@ -313,7 +334,10 @@
           catGross += gross;
           var net = gross * (1 - G.ri.qs);
           qsRecovered += gross * G.ri.qs;
-          var rec = catRecovery(net);
+          // one reinstatement: at most 2× the limit recoverable in a year
+          var annualRemaining = Math.max(0, 2 * G.ri.catL - (G.ri.catUsed || 0));
+          var rec = Math.min(catRecovery(net), annualRemaining);
+          G.ri.catUsed = (G.ri.catUsed || 0) + rec;
           if (rec > 0 && G.ri.catL > 0) {
             reinstatement += (rec / G.ri.catL) * riCatPremium;
           }
@@ -326,6 +350,17 @@
       }
     });
 
+    // casualty catastrophe: a social-inflation shock deteriorates the whole long-tail book
+    var openResv = totalReserves();
+    if (openResv > 500000 && Math.random() < 0.015) {
+      var shock = openResv * rnd(0.2, 0.35);
+      strengthening += shock;
+      G.policies.forEach(function (p) {
+        if (p.tail > 0 && !p.closed) p.trueELR = Math.min(1.8, p.trueELR * 1.12);
+      });
+      events.push({ icon: '📈', text: 'Social inflation shock: record jury awards ripple through the market. Reserve strengthening of ' + money(shock) + ' across your long-tail book — and open years just got worse.' });
+    }
+
     // quota share on premium and non-cat losses
     var qs = G.ri.qs;
     qsCededPrem = earned * qs;
@@ -335,11 +370,12 @@
 
     var float_ = G.capital + annualPremiumInForce() * 0.5 + totalReserves();
     var invIncome = float_ * INV_YIELD_QTR;
+    var opex = OPEX_PER_QTR + 0.07 * earned;   // fixed base + costs that grow with the book
 
     var profit = earned - qsCededPrem + qsCommission
       - netAttrLarge - catNet
       - ibnrProv - strengthening + releases
-      - acqCost - OPEX_PER_QTR - riCatPremium - reinstatement
+      - acqCost - opex - riCatPremium - reinstatement
       + invIncome;
 
     G.capital += profit;
@@ -349,10 +385,10 @@
 
     var netEarned = earned - qsCededPrem;
     var netLosses = netAttrLarge + catNet + ibnrProv + strengthening - releases;
-    var cr = netEarned > 0 ? (netLosses + acqCost + OPEX_PER_QTR - qsCommission) / netEarned : 0;
+    var cr = netEarned > 0 ? (netLosses + acqCost + opex - qsCommission) / netEarned : 0;
 
     var report = {
-      q: G.q, earned: earned, acqCost: acqCost, opex: OPEX_PER_QTR,
+      q: G.q, earned: earned, acqCost: acqCost, opex: opex,
       attr: attr, large: large, catGross: catGross, catNet: catNet,
       ibnrProv: ibnrProv, strengthening: strengthening, releases: releases,
       qsCededPrem: qsCededPrem, qsCommission: qsCommission, qsRecovered: qsRecovered,
@@ -378,6 +414,7 @@
 
   function nextQuarter() {
     G.q++;
+    if (qInYear(G.q) === 1) G.ri.catUsed = 0;   // cat layer limit (incl. reinstatement) resets annually
     genSubmissions();
     G.phase = 'uw';
     save();
@@ -502,7 +539,7 @@
     // reinsurance in force
     html += '<h2>Outwards reinsurance</h2><div class="card">' +
       '<div class="gline"><span>Quota share</span><span>' + (G.ri.qs ? pct(G.ri.qs) + ' ceded · ' + pct(QS_CEDING_COMM) + ' commission' : 'none') + '</span></div>' +
-      '<div class="gline"><span>Cat excess of loss</span><span>' + (G.ri.catL ? money(G.ri.catL) + ' xs ' + money(G.ri.catA) + ' · ' + money(catRiPrice(G.ri.catA, G.ri.catL) / 4) + '/qtr' : 'none') + '</span></div></div>';
+      '<div class="gline"><span>Cat excess of loss</span><span>' + (G.ri.catL ? money(G.ri.catL) + ' xs ' + money(G.ri.catA) + ' · ' + money(Math.max(0, 2 * G.ri.catL - (G.ri.catUsed || 0))) + ' annual limit left' : 'none') + '</span></div></div>';
 
     // results history
     if (G.history.length) {
@@ -651,20 +688,25 @@
       catOpts.push({ A: Math.round(worst * 0.15 / 5e5) * 5e5, L: Math.round(worst * 1.1 / 5e5) * 5e5 });
     }
 
+    var qsLocked = qInYear(G.q) !== 1;
+    var seasonW = catSeasonWeight();
     var html = header() +
       '<h2>Portfolio decisions — Y' + yearOf(G.q) + ' Q' + qInYear(G.q) + '</h2>' +
-      '<div class="card"><h3 style="margin-top:0">Quota share</h3>' +
-      '<p class="sub">Cede a fixed share of every premium and every loss; receive a ' + pct(QS_CEDING_COMM) + ' ceding commission. Cuts required capital — and profit.</p>' +
+      '<div class="card"><h3 style="margin-top:0">Quota share — an annual treaty</h3>' +
+      '<p class="sub">Cede a fixed share of every premium and every loss; receive a ' + pct(QS_CEDING_COMM) + ' ceding commission. Cuts required capital — and profit. ' +
+      (qsLocked ? '<strong>Treaties are annual: your ' + (G.ri.qs ? pct(G.ri.qs) : 'nil') + ' cession is locked until 1 January.</strong>' : 'Set it now for the year ahead.') + '</p>' +
       '<div class="gopt-row">' + qsOpts.map(function (q) {
-        return '<button class="gopt' + (G.ri.qs === q ? ' active' : '') + '" data-qs="' + q + '">' + (q ? pct(q) : 'None') + '</button>';
+        return '<button class="gopt' + (G.ri.qs === q ? ' active' : '') + '" data-qs="' + q + '"' + (qsLocked ? ' disabled' : '') + '>' + (q ? pct(q) : 'None') + '</button>';
       }).join('') + '</div></div>' +
       '<div class="card"><h3 style="margin-top:0">Catastrophe excess of loss</h3>' +
-      '<p class="sub">Per-event protection above an attachment, one reinstatement (pro rata premium). Your worst net zone PML is <strong>' + money(worst * (1 - G.ri.qs)) + '</strong>.</p>' +
+      '<p class="sub">Per-event protection above an attachment, one reinstatement (annual limit = 2× the layer). Your worst net zone PML is <strong>' + money(worst * (1 - G.ri.qs)) + '</strong>. ' +
+      'Pricing is seasonal — this quarter carries ' + pct(seasonW) + ' of the year’s hazard, so cover costs accordingly. No cheap wind cover bought only for Q3.</p>' +
+      (G.ri.catUsed ? '<p class="sub">⚠️ ' + money(G.ri.catUsed) + ' of this year’s ' + money(2 * G.ri.catL) + ' recoverable limit already used.</p>' : '') +
       '<div id="cat-opts">' + catOpts.map(function (o, i) {
-        var price = o.L ? catRiPrice(o.A, o.L) / 4 : 0;
+        var price = o.L ? catRiPrice(o.A, o.L) * seasonW : 0;
         var sel = G.ri.catA === o.A && G.ri.catL === o.L;
         return '<button class="gopt wide' + (sel ? ' active' : '') + '" data-cat="' + i + '">' +
-          (o.L ? money(o.L) + ' xs ' + money(o.A) + ' — ' + money(price) + ' per quarter' : 'No cat cover') + '</button>';
+          (o.L ? money(o.L) + ' xs ' + money(o.A) + ' — ' + money(price) + ' this quarter' : 'No cat cover') + '</button>';
       }).join('') + '</div></div>' +
       '<div class="card"><h3 style="margin-top:0">Capital actions</h3>' +
       '<p class="sub">A real board manages capital both ways: raise it when thin (costly — investors charge for rescue money), return it when fat (idle capital drags your return).</p>' +
@@ -681,6 +723,7 @@
     bindCommon();
 
     document.querySelectorAll('[data-qs]').forEach(function (b) {
+      if (b.disabled) return;
       b.addEventListener('click', function () {
         G.ri.qs = Number(b.getAttribute('data-qs')); save(); renderRi();
       });
