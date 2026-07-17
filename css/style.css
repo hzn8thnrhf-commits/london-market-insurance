@@ -495,6 +495,61 @@ p { line-height: 1.55; }
   border-radius: 9px; padding: 4px 10px;
 }
 
+/* ---------- Syndicate game ---------- */
+.game-head { margin-bottom: 14px; }
+.gh-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.gh-title { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.01em; }
+.gh-title span { font-size: 0.8rem; font-weight: 700; color: var(--text2); margin-left: 8px; }
+.gh-reset {
+  appearance: none; border: 1px solid var(--line); background: var(--card); color: var(--text2);
+  font: inherit; font-size: 0.72rem; font-weight: 700; border-radius: 10px; padding: 6px 12px; cursor: pointer;
+}
+.gstat-row { display: flex; gap: 8px; }
+.gstat {
+  flex: 1; min-width: 0; background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+  padding: 9px 10px; text-align: center; box-shadow: var(--shadow);
+}
+.gstat b { display: block; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gstat span { font-size: 0.6rem; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; }
+.gstat.good b { color: var(--green); }
+.gstat.warn b { color: var(--amber); }
+.gstat.bad b { color: var(--red); }
+.gline { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; font-size: 0.86rem; }
+.gline span:first-child { color: var(--text2); }
+.gline span:last-child { font-weight: 650; text-align: right; }
+.gline.gtotal { border-top: 1.5px solid var(--line); margin-top: 6px; padding-top: 10px; font-size: 0.95rem; }
+.gpos { color: var(--green) !important; }
+.gneg { color: var(--red) !important; }
+.gevent { display: flex; gap: 10px; padding: 7px 0; font-size: 0.86rem; line-height: 1.5; align-items: flex-start; }
+.gevent span:first-child { flex: none; font-size: 1.1rem; }
+
+.slip .slip-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.slip-class {
+  font-size: 0.72rem; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase;
+  color: var(--accent); background: var(--accent-soft); border-radius: 16px; padding: 4px 11px;
+}
+.slip-prem { font-weight: 800; font-size: 1.05rem; white-space: nowrap; }
+.slip-prem small { font-weight: 600; color: var(--text2); font-size: 0.66rem; display: block; text-align: right; }
+.slip-name { font-size: 1.15rem; font-weight: 750; margin: 10px 0 8px; letter-spacing: -0.01em; }
+.slip-table { width: 100%; border-collapse: collapse; font-size: 0.84rem; margin-bottom: 12px; }
+.slip-table td { padding: 6px 0; border-bottom: 1px solid var(--line); vertical-align: top; line-height: 1.45; }
+.slip-table td:first-child { color: var(--text2); width: 38%; padding-right: 10px; }
+.slip-impact { background: var(--card2); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin-bottom: 4px; }
+.ghist-row { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 4px; }
+.ghist {
+  font-size: 0.68rem; font-weight: 700; border-radius: 8px; padding: 3px 8px;
+  background: var(--green-soft); color: var(--green);
+}
+.ghist.loss { background: var(--red-soft); color: var(--red); }
+.gopt-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.gopt {
+  appearance: none; font: inherit; cursor: pointer; font-size: 0.85rem; font-weight: 700;
+  border: 1.5px solid var(--line); background: var(--card2); color: var(--text);
+  border-radius: 12px; padding: 10px 16px;
+}
+.gopt.wide { display: block; width: 100%; margin-bottom: 8px; text-align: left; }
+.gopt.active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+
 /* Glossary letter headers */
 .gloss-letter {
   font-size: 0.78rem; font-weight: 800; color: var(--accent);

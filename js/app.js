@@ -266,6 +266,7 @@
     if (page === 'awards') return renderAwards();
     if (page === 'map') return renderMap(parts[1]);
     if (page === 'mapquiz' && parts[1]) return renderMapQuiz(parts[1]);
+    if (page === 'game') { setTab(''); return window.LMA_GAME.render(parts[1]); }
     renderHome();
   }
 
@@ -329,6 +330,12 @@
       '<div class="row"><div class="mod-icon">🗺️</div>' +
       '<div class="grow"><div class="mod-title">Connections map</div>' +
       '<div class="mod-meta">Pick a class and see how client, brokers, capital, reinsurance and claims all fit together.</div></div>' +
+      '<div class="chev">›</div></div></div>';
+
+    html += '<div class="card tappable" data-go="#/game">' +
+      '<div class="row"><div class="mod-icon">🎮</div>' +
+      '<div class="grow"><div class="mod-title">Syndicate — the underwriting game</div>' +
+      '<div class="mod-meta">Run your own insurer: $10m of capital, ten slips a quarter, catastrophes included.</div></div>' +
       '<div class="chev">›</div></div></div>';
 
     html += '<h2>Modules</h2>';

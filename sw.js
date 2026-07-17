@@ -1,10 +1,11 @@
 /* London Market Academy — service worker: offline-first cache */
-var CACHE = 'lma-v6';
+var CACHE = 'lma-v7';
 var ASSETS = [
   './',
   './index.html',
   './css/style.css',
   './js/app.js',
+  './js/game.js',
   './js/content/module-market.js',
   './js/content/module-premium.js',
   './js/content/module-pricing.js',
