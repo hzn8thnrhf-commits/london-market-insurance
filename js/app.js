@@ -211,7 +211,25 @@
     return n;
   }
 
+  function gameState() {
+    try { return JSON.parse(localStorage.getItem('lma-game-v1')); } catch (e) { return null; }
+  }
+
   ACHIEVEMENTS.push(
+    { id: 'game-founder', icon: '🎲', name: 'Open for Business',
+      desc: 'Found your syndicate in the underwriting game.',
+      test: function () { var g = gameState(); return !!(g && g.q); } },
+    { id: 'game-cat', icon: '🌊', name: 'Weathered the Storm',
+      desc: 'Endure a catastrophe in the game and stay solvent.',
+      test: function () { var g = gameState(); return !!(g && g.records && g.records.catsSurvived >= 1 && !g.gameOver); } },
+    { id: 'game-year3', icon: '📅', name: 'Three-Year Account',
+      desc: 'Keep your game syndicate trading into Year 3.',
+      test: function () { var g = gameState(); return !!(g && g.q >= 9 && !g.gameOver); },
+      prog: function () { var g = gameState(); return [Math.min(g && g.q || 0, 9), 9]; } },
+    { id: 'game-20m', icon: '💰', name: 'Doubled the Capital',
+      desc: 'Grow your game syndicate’s capital to $20m.',
+      test: function () { var g = gameState(); return !!(g && g.capital >= 20e6); },
+      prog: function () { var g = gameState(); return [Math.min(Math.round((g && g.capital || 0) / 1e6), 20), 20]; } },
     { id: 'surveyor', icon: '🗺️', name: 'Surveyor',
       desc: 'Open every map on the Connections page.',
       test: function () { return allMaps().length > 0 && mapsViewedCount() === allMaps().length; },
@@ -332,10 +350,20 @@
       '<div class="mod-meta">Pick a class and see how client, brokers, capital, reinsurance and claims all fit together.</div></div>' +
       '<div class="chev">›</div></div></div>';
 
+    var gs = gameState();
+    var gameMeta = 'Run your own insurer: $10m of capital, ten slips a quarter, catastrophes included.';
+    var gameTitle = 'Syndicate — the underwriting game';
+    if (gs && gs.q) {
+      gameTitle = 'Syndicate — Year ' + Math.ceil(gs.q / 4) + ' · Q' + (((gs.q - 1) % 4) + 1);
+      var cap = gs.capital >= 1e6 ? '$' + (gs.capital / 1e6).toFixed(1) + 'm' : '$' + Math.round(gs.capital / 1000) + 'k';
+      gameMeta = gs.gameOver ? 'Insolvent — found a new syndicate?' :
+        'Capital ' + cap + ' · ' + (gs.phase === 'uw' ? (gs.submissions.length - gs.subIndex) + ' slips waiting' :
+          gs.phase === 'ri' ? 'set reinsurance & close the quarter' : 'quarter report ready');
+    }
     html += '<div class="card tappable" data-go="#/game">' +
       '<div class="row"><div class="mod-icon">🎮</div>' +
-      '<div class="grow"><div class="mod-title">Syndicate — the underwriting game</div>' +
-      '<div class="mod-meta">Run your own insurer: $10m of capital, ten slips a quarter, catastrophes included.</div></div>' +
+      '<div class="grow"><div class="mod-title">' + gameTitle + '</div>' +
+      '<div class="mod-meta">' + gameMeta + '</div></div>' +
       '<div class="chev">›</div></div></div>';
 
     html += '<h2>Modules</h2>';
@@ -1008,6 +1036,7 @@
     t.addEventListener('click', function () { go(t.getAttribute('data-route')); });
   });
 
+  window.LMA_CHECK_AWARDS = checkAchievements;
   window.addEventListener('hashchange', route);
   route();
   checkAchievements();

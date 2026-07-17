@@ -150,14 +150,49 @@
       rate: rate, acq: acq, zone: zone, dmg: dmg,
       trueELR: trueELR, tail: cls.tail,
       benchRate: benchRate, estELR: estELR,
-      hist: hist, histLR: histLR,
+      hist: hist, histLR: histLR, mkt: market, exp: 0,
+      writtenQ: 0, share: 0, earnedQtrs: 0, resv: 0, closed: false
+    };
+  }
+
+  // A renewal of one of the player's own expiring policies: same risk, new terms.
+  // The broker's offer reflects the market and the risk's experience — and the
+  // player knows that experience first-hand.
+  function genRenewal(p) {
+    var cls = CLASSES.filter(function (c) { return c.id === p.classId; })[0];
+    var mkt = G.market;
+    var hadLoss = (p.exp || 0) > 0;
+    var rateNew = p.rate * (mkt / (p.mkt || 1)) * (hadLoss ? rnd(1.08, 1.30) : rnd(0.93, 1.06));
+    var premium = Math.round(p.limit * rateNew / 1000) * 1000;
+    var ratio = p.rate / rateNew;
+    var midRate = (cls.rateOnLimit[0] + cls.rateOnLimit[1]) / 2;
+    var hist = p.hist.slice(1).concat([hadLoss ? Math.round(p.exp / 50000) * 50000 : 0]);
+    var histLoss = hist.reduce(function (a, b) { return a + b; }, 0);
+    return {
+      id: G.nextId++, classId: p.classId, name: p.name,
+      limit: p.limit, tiv: p.tiv, attach: p.attach, premium: premium,
+      rate: rateNew, acq: p.acq, zone: p.zone, dmg: p.dmg,
+      trueELR: Math.min(1.6, p.trueELR * ratio * rnd(0.95, 1.10)),
+      tail: p.tail,
+      benchRate: midRate * mkt,
+      estELR: Math.min(1.5, p.estELR * ratio),
+      hist: hist, histLR: histLoss / (premium * 5), mkt: mkt, exp: 0,
+      renewalOf: p.id, prevRate: p.rate, prevExp: p.exp || 0,
       writtenQ: 0, share: 0, earnedQtrs: 0, resv: 0, closed: false
     };
   }
 
   function genSubmissions() {
     G.submissions = [];
-    for (var i = 0; i < 10; i++) G.submissions.push(genRisk());
+    // your expiring policies come back to you first — the renewal book
+    var renewals = G.policies.filter(function (p) {
+      return p.share > 0 && p.writtenQ > 0 && (G.q - p.writtenQ) === 4 && !p.renewalOffered;
+    }).slice(0, 4);
+    renewals.forEach(function (p) {
+      p.renewalOffered = true;
+      G.submissions.push(genRenewal(p));
+    });
+    while (G.submissions.length < 10) G.submissions.push(genRisk());
     G.subIndex = 0;
   }
 
@@ -283,6 +318,7 @@
         if (Math.random() < largeProb) {
           var sev = p.limit * p.share * rnd(0.25, 1);
           large += sev;
+          p.exp = (p.exp || 0) + sev;
           events.push({ icon: '🔥', text: 'Large loss: ' + p.name + ' — gross ' + money(sev) + ' to your line.' });
         }
       } else {
@@ -305,6 +341,7 @@
             var sev = p.limit * p.share * rnd(0.3, 1);
             var drawn = Math.min(p.resv || 0, sev);
             p.resv = (p.resv || 0) - drawn;
+            p.exp = (p.exp || 0) + sev;
             var extraCharge = sev - drawn;
             strengthening += extraCharge;
             events.push({ icon: '⚖️', text: 'Late claim: ' + p.name + ' (written Y' + yearOf(p.writtenQ) + 'Q' + qInYear(p.writtenQ) + ') — ' + money(sev) +
@@ -410,6 +447,7 @@
 
     G.phase = 'report';
     save();
+    if (window.LMA_CHECK_AWARDS) window.LMA_CHECK_AWARDS();
   }
 
   function nextQuarter() {
@@ -713,7 +751,16 @@
       rocTxt = (100 * roc).toFixed(0) + '% expected return on the extra capital' + (roc >= 0.15 ? ' — clears a 15% hurdle' : roc >= 0 ? ' — thin against a 15% hurdle' : ' — expected to destroy value');
     }
 
+    var renewalHtml = '';
+    if (r.renewalOf) {
+      var rc = r.rate / r.prevRate - 1;
+      renewalHtml = '<div class="renewal-pill">🔁 <strong>Renewal of your expiring line</strong> · rate change ' +
+        (rc >= 0 ? '+' : '') + (100 * rc).toFixed(0) + '% · ' +
+        (r.prevExp > 0 ? 'your year on it: losses of ' + money(r.prevExp) : 'your year on it: clean') + '</div>';
+    }
+
     var html = header() +
+      '<button class="backlink" data-ggo="#/game">‹ Dashboard <span style="font-weight:500">(your place is saved)</span></button>' +
       '<div class="quiz-progress">' + G.submissions.map(function (s, i) {
         var c = 'quiz-dot';
         if (i < G.subIndex) c += s.share > 0 ? ' right' : ' wrong';
@@ -723,7 +770,7 @@
       '<div class="card slip">' +
       '<div class="slip-head"><span class="slip-class">' + cls.icon + ' ' + esc(cls.name) + '</span>' +
       '<span class="slip-prem">' + money(r.premium) + ' <small>annual premium</small></span></div>' +
-      '<div class="slip-name">' + esc(r.name) + '</div>' +
+      '<div class="slip-name">' + esc(r.name) + '</div>' + renewalHtml +
       '<table class="slip-table">' +
       (r.tiv ? '<tr><td>Total insured value</td><td>' + money(r.tiv) + '</td></tr>' : '') +
       '<tr><td>' + (r.attach ? 'Layer' : 'Limit') + '</td><td>' + money(r.limit) + (r.attach ? ' xs ' + money(r.attach) : '') + '</td></tr>' +
@@ -760,10 +807,13 @@
       '</div>' +
       (suspended ? '<div class="d-caption" style="margin-top:8px">🚫 <strong>Regulatory suspension:</strong> you are below required capital. You cannot bind new business — decline the rest, then raise capital or buy reinsurance.</div>' :
         !canFull ? '<div class="d-caption" style="margin-top:8px">⚠️ Capital headroom is too tight for the full line — half it, decline, or buy more reinsurance next phase.</div>' : '') +
-      '</div>';
+      '</div>' +
+      (G.subIndex > 0 ? '<button class="backlink" id="g-undo">↩︎ Undo previous decision</button>' : '');
 
     app().innerHTML = html;
     bindCommon();
+    var gu = document.getElementById('g-undo');
+    if (gu) gu.addEventListener('click', function () { undoLast(); renderSlip(); });
 
     function decide(share) {
       if (share > 0) {
@@ -781,6 +831,18 @@
     if (canFull) bf.addEventListener('click', function () { decide(1); });
     if (canHalf) bh.addEventListener('click', function () { decide(0.5); });
     document.getElementById('g-decline').addEventListener('click', function () { decide(0); });
+  }
+
+  function undoLast() {
+    if (G.subIndex <= 0) return;
+    G.subIndex--;
+    var prev = G.submissions[G.subIndex];
+    if (prev.share > 0) {
+      G.policies = G.policies.filter(function (x) { return x.id !== prev.id; });
+      G.records.writtenCount--;
+    }
+    prev.share = 0; prev.writtenQ = 0; prev.earnedQtrs = 0; prev.resv = 0;
+    save();
   }
 
   function renderRi() {
@@ -801,6 +863,7 @@
     var qsLocked = qInYear(G.q) !== 1;
     var seasonW = catSeasonWeight();
     var html = header() +
+      '<button class="backlink" id="g-reopen">↩︎ Reopen the last slip</button>' +
       '<h2>Portfolio decisions — Y' + yearOf(G.q) + ' Q' + qInYear(G.q) + '</h2>' +
       '<div class="card"><h3 style="margin-top:0">Quota share — an annual treaty</h3>' +
       '<p class="sub">Cede a fixed share of every premium and every loss; receive a ' + pct(QS_CEDING_COMM) + ' ceding commission. Cuts required capital — and profit. ' +
@@ -843,6 +906,12 @@
         var o = catOpts[Number(b.getAttribute('data-cat'))];
         G.ri.catA = o.A; G.ri.catL = o.L; save(); renderRi();
       });
+    });
+    document.getElementById('g-reopen').addEventListener('click', function () {
+      G.phase = 'uw';
+      undoLast();
+      save();
+      go('#/game/slip');
     });
     document.getElementById('g-raise').addEventListener('click', function () {
       G.capital += 2.5e6 * 0.88;
@@ -913,6 +982,28 @@
       statCard('All-time P&L', money(G.allTime), G.allTime >= 0 ? 'good' : 'bad') +
       statCard('Solvency', pct(solvency())) +
       '</div>';
+
+    // Q4: the year in review, with a Lloyd's-style verdict
+    if (qInYear(r.q) === 4 && !G.gameOver) {
+      var yrRows = G.history.filter(function (h) { return yearOf(h.q) === yr; });
+      var yrProfit = G.yearProfits[yr] || 0;
+      var crAvg = yrRows.length ? yrRows.reduce(function (a, h) { return a + h.cr; }, 0) / yrRows.length : 0;
+      var capStart = Math.max(1e6, r.capitalAfter - yrProfit);
+      var roe = yrProfit / capStart;
+      var grade, verdict;
+      if (roe >= 0.15) { grade = 'A'; verdict = 'Outstanding. Lloyd’s waves your plan through and brokers queue at your box. Beware: this is when discipline usually slips.'; }
+      else if (roe >= 0.08) { grade = 'B'; verdict = 'Solid. You are covering your cost of capital. Push rate where you can and protect the peak zones.'; }
+      else if (roe >= 0) { grade = 'C'; verdict = 'Marginal. Profitable, but capital would nearly have done as well in bonds. Re-underwrite the worst segment.'; }
+      else if (roe >= -0.10) { grade = 'D'; verdict = 'A losing year. Expect hard questions on your plan — shrink, re-price, or restructure the reinsurance.'; }
+      else { grade = 'E'; verdict = 'Severe loss. In the real market this means capital loading, plan cuts and a very uncomfortable performance review.'; }
+      html += '<h2>Year ' + yr + ' in review</h2><div class="card">' +
+        '<div class="gstat-row" style="margin-bottom:10px">' +
+        statCard('Return on capital', (100 * roe).toFixed(1) + '%', roe >= 0.08 ? 'good' : roe >= 0 ? 'warn' : 'bad') +
+        statCard('Avg combined ratio', (100 * crAvg).toFixed(0) + '%', crAvg <= 0.95 ? 'good' : crAvg <= 1.05 ? 'warn' : 'bad') +
+        statCard('Grade', grade, roe >= 0.08 ? 'good' : roe >= 0 ? 'warn' : 'bad') +
+        '</div>' +
+        '<p class="sub" style="margin:0">' + verdict + '</p></div>';
+    }
 
     if (!G.gameOver) html += '<button class="btn" id="g-next">Start Y' + yearOf(G.q + 1) + ' Q' + qInYear(G.q + 1) + ' — 10 new submissions</button>';
 
