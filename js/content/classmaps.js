@@ -441,6 +441,40 @@ window.LMA_CLASSMAPS = [
         desc: 'At 36 months the year of account closes by reinsurance to close; the result is declared and profit finally flows to the members whose capital stood behind the year.',
         num: '16p of profit distributed — a 16% margin on the pound',
         links: ['regulation/yoa-ritc'] }
+    ],
+    quiz: [
+      { type: 'num',
+        q: 'A client pays £2,000,000 of premium and brokerage is 15%. How much reaches the insurer, in £?',
+        answer: 1700000, tol: 5000, unit: '£',
+        explain: 'The broker’s slice comes off first: £2m × 0.85 = £1,700,000 — the first step of the pound’s journey.' },
+      { type: 'num',
+        q: 'Follow a full pound: −15p brokerage, −12p outwards reinsurance, −50p net claims, −12p expenses, +5p investment income. How many pence of profit remain?',
+        answer: 16, tol: 0.2, unit: 'pence',
+        explain: '100 − 15 − 12 − 50 − 12 + 5 = 16p — the journey’s whole arithmetic in one line.' },
+      { type: 'mc',
+        q: 'Why can the insurer not simply take its profit as soon as the premium arrives?',
+        options: [
+          'Because brokers hold the money for three years',
+          'Because premium sits in trust funds for policyholders, and profit is only released once the year of account closes and its result is declared',
+          'Because tax must be calculated first',
+          'Because central settlement pays annually'
+        ],
+        answer: 1,
+        explain: 'Premium trust funds ring-fence the money for claims first. Distribution waits for the year’s closure — traditionally at 36 months.' },
+      { type: 'num',
+        q: 'Gross premium is £1,000,000; brokerage is 15% and the outwards reinsurance attributable to the contract costs £120,000. What is the net-net premium, in £?',
+        answer: 730000, tol: 2000, unit: '£',
+        explain: '£1,000,000 − £150,000 brokerage − £120,000 ceded = £730,000 — the premium waterfall from the Premium module.' },
+      { type: 'mc',
+        q: 'Which class generates the most investment income per pound of premium, and why?',
+        options: [
+          'Property catastrophe — premiums are largest',
+          'Long-tail casualty — premium is held for many years before claims are paid, so the float works longest',
+          'All classes equally',
+          'Marine cargo — ships travel slowly'
+        ],
+        answer: 1,
+        explain: 'Float scales with the tail: the +5p of investment income in this journey is small for property and much bigger for a casualty pound.' }
     ]
   },
   {
@@ -484,6 +518,40 @@ window.LMA_CLASSMAPS = [
         desc: 'Depleted capacity and fresh fear reprice the market: rates on line jump at the next renewal season, and the carriers that kept powder dry write the hard market.',
         num: 'Catastrophe rates +30% at 1 January',
         links: ['pricing/cycle'] }
+    ],
+    quiz: [
+      { type: 'num',
+        q: 'The carrier’s booked gross ultimate is US$130m, reinsurance recoveries are US$85m and reinstatement premiums payable are US$9m. What is the net cost of the event, in US$ millions?',
+        answer: 54, tol: 0.5, unit: 'US$ millions',
+        explain: '130 − 85 + 9 = US$54m — recoveries reduce the cost, reinstatement premiums add to it.' },
+      { type: 'mc',
+        q: 'How can a carrier report a credible loss estimate within days, before real claims arrive?',
+        options: [
+          'It waits for the broker’s summary',
+          'It runs the event’s footprint through its catastrophe model against its own exposure data',
+          'It copies the industry estimate',
+          'It cannot — early estimates are guesses'
+        ],
+        answer: 1,
+        explain: 'The model that priced the portfolio also estimates its losses: hazard footprint × exposure × vulnerability × policy terms, with honest uncertainty bands.' },
+      { type: 'num',
+        q: 'A US$20m catastrophe layer carrying US$4m of premium is fully consumed, with one reinstatement at 100% pro rata to amount. What reinstatement premium is due, in US$ millions?',
+        answer: 4, tol: 0.05, unit: 'US$ millions',
+        explain: 'Full limit consumed → full reinstatement premium: (20 ÷ 20) × US$4m = US$4m to restore cover for a second event.' },
+      { type: 'mc',
+        q: 'Why does alternative capital not flood straight back into the market after a major catastrophe, despite rising prices?',
+        options: [
+          'Investors lose interest in insurance',
+          'Collateral is trapped in trust against developing losses, so the capital cannot be redeployed just as demand peaks',
+          'Regulators impose a waiting period',
+          'Catastrophe bonds are cancelled after events'
+        ],
+        answer: 1,
+        explain: 'Trapped collateral is the structural brake: the same trust mechanics that remove credit risk lock capital out of the hardening market — amplifying the cycle.' },
+      { type: 'num',
+        q: 'A catastrophe rate index stood at 80 before the event. Renewal rates rise 30%. Where does the index stand, in points?',
+        answer: 104, tol: 0.5, unit: 'index points',
+        explain: '80 × 1.30 = 104 — the event has more than restored the softening of previous years, which is exactly how the cycle turns.' }
     ]
   },
   {
@@ -526,6 +594,40 @@ window.LMA_CLASSMAPS = [
         desc: 'Three years on, the year of account closes by reinsurance to close: remaining liabilities transfer to the next year for a premium equal to their estimated value, and the result is finally distributed.',
         num: 'Reinsurance to close premium: £320m of transferred liabilities',
         links: ['regulation/yoa-ritc'] }
+    ],
+    quiz: [
+      { type: 'num',
+        q: 'The syndicate’s model produces a £200m ultimate one-in-200 requirement. Applying Lloyd’s 35% economic uplift, what must members hold as Funds at Lloyd’s, in £ millions?',
+        answer: 270, tol: 1, unit: '£ millions',
+        explain: '£200m × 1.35 = £270m — the Economic Capital Assessment funded at coming into line.' },
+      { type: 'num',
+        q: 'The plan targets a 92% combined ratio on £600m of premium. What underwriting profit does the plan imply, in £ millions?',
+        answer: 48, tol: 0.5, unit: '£ millions',
+        explain: '(100% − 92%) × £600m = £48m — before investment income.' },
+      { type: 'mc',
+        q: 'What happens if a member cannot meet its capital requirement at coming into line?',
+        options: [
+          'Lloyd’s lends the shortfall permanently',
+          'It cannot continue underwriting — the syndicate must shrink its plan or the member must fund the gap',
+          'The Central Fund covers it indefinitely',
+          'Nothing until year-end'
+        ],
+        answer: 1,
+        explain: 'No funds, no underwriting: coming into line is the hard gate connecting the plan to real money.' },
+      { type: 'mc',
+        q: 'Achieved rate change is +1% against a planned +4% by the end of the first quarter. Why must the syndicate act now rather than wait for year-end results?',
+        options: [
+          'Because Lloyd’s fines late reporters',
+          'Because every further month of writing at inadequate assumed rates banks mispriced exposure that cannot be recalled once bound',
+          'Because brokers expect quarterly updates',
+          'Because rates always improve in summer'
+        ],
+        answer: 1,
+        explain: 'Premium written is exposure banked — early detection preserves the option to reprice, shrink or restructure most of the year’s capacity.' },
+      { type: 'num',
+        q: 'At 36 months the closing year holds £180m of case reserves and £140m of incurred-but-not-reported. What reinsurance-to-close premium transfers its liabilities at best estimate, in £ millions?',
+        answer: 320, tol: 2, unit: '£ millions',
+        explain: '180 + 140 = £320m — paid to the receiving year, whose members now stand behind the old liabilities.' }
     ]
   },
   {
@@ -568,6 +670,40 @@ window.LMA_CLASSMAPS = [
       { icon: '📊', title: 'Closure and feedback',
         desc: 'The file closes; the loss feeds pricing (was the rate adequate?), exposure management (was the probable maximum loss right?) and the renewal negotiation. Claims are the data the next cycle is built from.',
         links: ['advanced2/portfolio-mi'] }
+    ],
+    quiz: [
+      { type: 'num',
+        q: 'The final agreed claim is US$54m and a follower holds a 7% signed line. What does that follower pay, in US$ millions?',
+        answer: 3.78, tol: 0.02, unit: 'US$ millions',
+        explain: '7% × 54 = US$3.78m — several liability at the signed line, settled centrally.' },
+      { type: 'num',
+        q: 'That follower had booked a case reserve of US$4.2m. After paying US$3.78m, how much reserve does it release, in US$ millions?',
+        answer: 0.42, tol: 0.01, unit: 'US$ millions',
+        explain: '4.2 − 3.78 = US$0.42m released to results — accurate early reserving keeps such surprises small.' },
+      { type: 'mc',
+        q: 'Who agrees the final claim on behalf of the whole twelve-carrier subscription?',
+        options: [
+          'All twelve carriers individually',
+          'The lead insurer and, for a claim of this size, a second agreement party — binding the following market',
+          'The policyholder’s lawyers',
+          'The bureau'
+        ],
+        answer: 1,
+        explain: 'The claims agreement arrangements are what make subscription workable: designated agreement parties decide, everyone else pays their share.' },
+      { type: 'num',
+        q: 'One carrier’s share of the claim is US$3.6m gross, and it holds per-risk excess of loss attaching at US$1.5m. How much does it recover, in US$ millions?',
+        answer: 2.1, tol: 0.02, unit: 'US$ millions',
+        explain: '3.6 − 1.5 = US$2.1m recovered; its net loss is the US$1.5m retention.' },
+      { type: 'mc',
+        q: 'After closure, why does the claims file matter to the pricing and exposure teams?',
+        options: [
+          'It doesn’t — closed files are archived',
+          'The loss tests whether the rate was adequate and the probable maximum loss realistic — claims are the feedback data the next underwriting cycle is built from',
+          'Only regulators read closed files',
+          'It only matters for brokerage'
+        ],
+        answer: 1,
+        explain: 'Every settled claim is an experiment result: it validates or corrects the assumptions that priced and aggregated the risk — the loop that makes underwriting a learning system.' }
     ]
   }
 ];

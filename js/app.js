@@ -15,7 +15,9 @@
       numericRight: 0,      // running count of correctly answered numeric questions
       perfectCount: 0,      // number of quizzes ever finished at 100%
       studyDays: [],        // ISO dates on which something was completed
-      achievements: {}      // achId -> ISO timestamp
+      achievements: {},     // achId -> ISO timestamp
+      mapsViewed: {},       // mapId -> true
+      mapQuizBest: {}       // mapId -> { pct, right, total }
     };
   }
 
@@ -193,6 +195,36 @@
     });
   });
 
+  function allMaps() { return window.LMA_CLASSMAPS || []; }
+  function journeyMaps() { return allMaps().filter(function (c) { return c.group === 'journey' && c.quiz; }); }
+  function mapsViewedCount() {
+    var n = 0;
+    allMaps().forEach(function (c) { if (state.mapsViewed[c.id]) n++; });
+    return n;
+  }
+  function journeyQuizzesPassed() {
+    var n = 0;
+    journeyMaps().forEach(function (c) {
+      var b = state.mapQuizBest[c.id];
+      if (b && b.pct >= 70) n++;
+    });
+    return n;
+  }
+
+  ACHIEVEMENTS.push(
+    { id: 'surveyor', icon: '🗺️', name: 'Surveyor',
+      desc: 'Open every map on the Connections page.',
+      test: function () { return allMaps().length > 0 && mapsViewedCount() === allMaps().length; },
+      prog: function () { return [mapsViewedCount(), allMaps().length]; } },
+    { id: 'pathfinder', icon: '🥾', name: 'Pathfinder',
+      desc: 'Pass your first journey drill on the Connections page.',
+      test: function () { return journeyQuizzesPassed() >= 1; } },
+    { id: 'cartographer', icon: '🧭', name: 'Cartographer',
+      desc: 'Pass every journey drill on the Connections page.',
+      test: function () { return journeyMaps().length > 0 && journeyQuizzesPassed() === journeyMaps().length; },
+      prog: function () { return [journeyQuizzesPassed(), journeyMaps().length]; } }
+  );
+
   function anyQuizAtLeast(pct, count) {
     var n = 0;
     for (var k in state.quizBest) if (state.quizBest[k].pct >= pct) n++;
@@ -233,6 +265,7 @@
     if (page === 'glossary') return renderGlossary();
     if (page === 'awards') return renderAwards();
     if (page === 'map') return renderMap(parts[1]);
+    if (page === 'mapquiz' && parts[1]) return renderMapQuiz(parts[1]);
     renderHome();
   }
 
@@ -718,37 +751,83 @@
     return '<span class="lchip" data-go="#/lesson/' + m.id + '/' + lesson.id + '">' + m.icon + ' ' + esc(lesson.title) + '</span>';
   }
 
+  var mapCompareId = null;
+
   function renderMap(classId) {
     setTab('#/map');
-    var maps = window.LMA_CLASSMAPS || [];
+    var maps = allMaps();
     if (!maps.length) return renderHome();
     var current = maps[0];
     maps.forEach(function (c) { if (c.id === classId) current = c; });
 
+    if (!state.mapsViewed[current.id]) {
+      state.mapsViewed[current.id] = true;
+      save();
+    }
+
+    var isJourney = current.group === 'journey';
     var classes = maps.filter(function (c) { return c.group !== 'journey'; });
     var journeys = maps.filter(function (c) { return c.group === 'journey'; });
+
+    // compare partner (classes only, must not be self)
+    var cmp = null;
+    if (!isJourney && mapCompareId && mapCompareId !== current.id) {
+      classes.forEach(function (c) { if (c.id === mapCompareId) cmp = c; });
+    }
 
     function chipRow(list) {
       var s = '<div class="class-chips">';
       list.forEach(function (c) {
-        s += '<button class="cchip' + (c.id === current.id ? ' active' : '') + '" data-mapclass="' + c.id + '">' + c.icon + ' ' + esc(c.name) + '</button>';
+        s += '<button class="cchip' + (c.id === current.id ? ' active' : '') + '" data-mapclass="' + c.id + '">' +
+          (state.mapsViewed[c.id] ? '' : '<span class="cchip-new"></span>') + c.icon + ' ' + esc(c.name) + '</button>';
       });
       return s + '</div>';
     }
 
     var html = '<h1>Connections</h1>' +
-      '<p class="sub">Follow a class of business — or a journey through the whole machine — end to end: client, brokers, placement, premium, exposure, capital, reinsurance, claims and reserving, with the quirks at each step. Journeys carry a running numbers thread so you can watch the money move.</p>' +
+      '<p class="sub">Follow a class of business — or a journey through the whole machine — end to end. Compare two classes stage by stage, and test yourself on the journeys’ numbers.</p>' +
       '<div class="chip-label">Classes of business</div>' + chipRow(classes) +
-      '<div class="chip-label">Journeys</div>' + chipRow(journeys);
+      '<div class="chip-label">Journeys — with running numbers and drills</div>' + chipRow(journeys);
 
-    html += '<div class="card" style="padding:14px 15px;margin-bottom:16px"><div class="mod-title">' + current.icon + ' ' + esc(current.name) + '</div>' +
+    html += '<div class="card" style="padding:14px 15px;margin-bottom:14px"><div class="mod-title">' + current.icon + ' ' + esc(current.name) + '</div>' +
       '<div class="map-desc" style="margin-top:5px">' + esc(current.intro) + '</div></div>';
 
-    current.stages.forEach(function (s) {
-      html += '<div class="map-stage"><div class="map-rail"><div class="map-dot">' + s.icon + '</div></div>' +
+    // stage navigator strip
+    html += '<div class="map-strip">';
+    current.stages.forEach(function (s, i) {
+      html += '<button class="strip-dot" data-stage="' + i + '" title="' + esc(s.title) + '">' + s.icon + '</button>';
+    });
+    html += '</div>';
+
+    // compare bar (class maps only)
+    if (!isJourney) {
+      html += '<div class="compare-bar"><span>⇄ Compare with</span><select id="compare-sel">' +
+        '<option value="">— none —</option>';
+      classes.forEach(function (c) {
+        if (c.id === current.id) return;
+        html += '<option value="' + c.id + '"' + (cmp && cmp.id === c.id ? ' selected' : '') + '>' + esc(c.name) + '</option>';
+      });
+      html += '</select></div>';
+    }
+
+    // journey drill button
+    if (isJourney && current.quiz) {
+      var best = state.mapQuizBest[current.id];
+      html += '<button class="btn' + (best && best.pct >= 70 ? ' secondary' : '') + '" id="map-quiz-btn" style="margin-bottom:16px">🧪 ' +
+        (best ? 'Retake the drill — best ' + best.pct + '%' : 'Test this journey (' + current.quiz.length + ' questions)') + '</button>';
+    }
+
+    current.stages.forEach(function (s, i) {
+      html += '<div class="map-stage" id="stage-' + i + '"><div class="map-rail"><div class="map-dot">' + s.icon + '</div></div>' +
         '<div class="map-body"><div class="map-title">' + esc(s.title) + '</div>' +
         '<div class="map-desc">' + s.desc + '</div>' +
         (s.num ? '<div class="map-num">💰 ' + esc(s.num) + '</div>' : '');
+      if (cmp && cmp.stages[i]) {
+        html += '<div class="map-compare"><span class="cmp-label">⇄ ' + cmp.icon + ' ' + esc(cmp.name) + ' at this stage</span>' +
+          cmp.stages[i].desc +
+          (cmp.stages[i].num ? '<div class="map-num" style="margin-top:6px">💰 ' + esc(cmp.stages[i].num) + '</div>' : '') +
+          '</div>';
+      }
       (s.links || []).forEach(function (ref) { html += lessonChip(ref); });
       html += '</div></div>';
     });
@@ -758,6 +837,156 @@
     document.querySelectorAll('.cchip').forEach(function (chip) {
       chip.addEventListener('click', function () { go('#/map/' + chip.getAttribute('data-mapclass')); });
     });
+    document.querySelectorAll('.strip-dot').forEach(function (d) {
+      d.addEventListener('click', function () {
+        var el = document.getElementById('stage-' + d.getAttribute('data-stage'));
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
+    var sel = document.getElementById('compare-sel');
+    if (sel) {
+      sel.addEventListener('change', function () {
+        mapCompareId = sel.value || null;
+        renderMap(current.id);
+      });
+    }
+    var mq = document.getElementById('map-quiz-btn');
+    if (mq) mq.addEventListener('click', function () { go('#/mapquiz/' + current.id); });
+    checkAchievements();
+  }
+
+  /* ---------- journey drills ---------- */
+
+  function renderMapQuiz(mapId) {
+    var m = null;
+    allMaps().forEach(function (c) { if (c.id === mapId) m = c; });
+    if (!m || !m.quiz) return renderMap(mapId);
+    setTab('#/map');
+
+    var qi = 0, results = [], answered = false;
+
+    function dots() {
+      var s = '<div class="quiz-progress">';
+      m.quiz.forEach(function (q, i) {
+        var cls = 'quiz-dot';
+        if (i < results.length) cls += results[i] ? ' right' : ' wrong';
+        else if (i === qi) cls += ' current';
+        s += '<div class="' + cls + '"></div>';
+      });
+      return s + '</div>';
+    }
+
+    function showQuestion() {
+      answered = false;
+      var q = m.quiz[qi];
+      var isNum = q.type === 'num';
+      var html = '<button class="backlink" data-go="#/map/' + m.id + '">‹ Back to the map</button>' +
+        '<h1>Drill: ' + esc(m.name) + '</h1>' + dots() +
+        '<div class="card">' +
+        '<span class="q-tag' + (isNum ? ' numeric' : '') + '">' + (isNum ? 'Numeric' : 'Multiple choice') + ' · Q' + (qi + 1) + ' of ' + m.quiz.length + '</span>' +
+        '<div class="q-text">' + q.q + '</div>';
+      if (isNum) {
+        html += '<input class="num-input" id="num-answer" type="text" inputmode="decimal" autocomplete="off" placeholder="Your answer">';
+        if (q.unit) html += '<div class="num-unit">Answer in ' + esc(q.unit) + '</div>';
+      } else {
+        q.options.forEach(function (opt, i) { html += '<button class="opt" data-i="' + i + '">' + opt + '</button>'; });
+      }
+      html += '<div id="q-feedback"></div>' +
+        '<button class="btn" id="q-action">' + (isNum ? 'Check answer' : 'Select an answer') + '</button></div>';
+
+      app().innerHTML = html;
+      bindGoLinks();
+      var action = document.getElementById('q-action');
+
+      function settle(right, q) {
+        answered = true;
+        results.push(right);
+        if (right && q.type === 'num') { state.numericRight++; save(); }
+        var head = right ? 'Correct.' : (q.type === 'num'
+          ? 'Not quite — the answer is <strong>' + (Math.abs(q.answer) >= 1000 ? q.answer.toLocaleString('en-GB') : q.answer) + (q.unit ? ' ' + esc(q.unit) : '') + '</strong>.'
+          : 'Not quite.');
+        document.getElementById('q-feedback').innerHTML =
+          '<div class="feedback ' + (right ? 'good' : 'bad') + '"><b>' + head + '</b>' + (q.explain || '') + '</div>';
+        action.textContent = (qi === m.quiz.length - 1) ? 'See results' : 'Next question';
+        var wrap = document.querySelector('.quiz-progress');
+        if (wrap) wrap.outerHTML = dots();
+      }
+
+      if (isNum) {
+        var input = document.getElementById('num-answer');
+        input.focus();
+        input.addEventListener('keydown', function (e) { if (e.key === 'Enter') action.click(); });
+        action.addEventListener('click', function () {
+          if (answered) { advance(); return; }
+          var raw = input.value.replace(/[,\s%£$€]/g, '');
+          if (raw === '' || isNaN(Number(raw))) { input.focus(); return; }
+          var tol = (q.tol != null) ? q.tol : Math.abs(q.answer) * 0.005;
+          var right = Math.abs(Number(raw) - q.answer) <= tol + 1e-9;
+          settle(right, q);
+          input.disabled = true;
+        });
+      } else {
+        var picked = -1;
+        document.querySelectorAll('.opt').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            if (answered) return;
+            picked = Number(btn.getAttribute('data-i'));
+            document.querySelectorAll('.opt').forEach(function (b) { b.classList.remove('picked'); });
+            btn.classList.add('picked');
+            action.textContent = 'Check answer';
+          });
+        });
+        action.addEventListener('click', function () {
+          if (answered) { advance(); return; }
+          if (picked < 0) return;
+          var right = picked === q.answer;
+          document.querySelectorAll('.opt').forEach(function (b, i) {
+            if (i === q.answer) b.classList.add('correct');
+            else if (i === picked && !right) b.classList.add('incorrect');
+          });
+          settle(right, q);
+        });
+      }
+
+      function advance() {
+        qi++;
+        if (qi >= m.quiz.length) finish(); else showQuestion();
+      }
+    }
+
+    function finish() {
+      var right = results.filter(Boolean).length;
+      var pct = Math.round(100 * right / results.length);
+      var prev = state.mapQuizBest[m.id];
+      if (!prev || pct > prev.pct) state.mapQuizBest[m.id] = { pct: pct, right: right, total: results.length };
+      if (pct === 100) state.perfectCount++;
+      markStudyDay();
+      save();
+
+      var passed = pct >= 70;
+      var color = passed ? 'var(--green)' : 'var(--red)';
+      var r = 58, c = 2 * Math.PI * r;
+      var html = '<h1>Drill results</h1>' +
+        '<div class="card"><div class="score-ring-wrap">' +
+        '<div class="score-ring"><svg width="132" height="132">' +
+        '<circle cx="66" cy="66" r="' + r + '" fill="none" stroke="var(--line)" stroke-width="10"/>' +
+        '<circle cx="66" cy="66" r="' + r + '" fill="none" stroke="' + color + '" stroke-width="10" stroke-linecap="round" ' +
+        'stroke-dasharray="' + c + '" stroke-dashoffset="' + (c * (1 - pct / 100)) + '"/>' +
+        '</svg><div class="score-num">' + pct + '%<small>' + right + ' of ' + results.length + '</small></div></div>' +
+        '<h2 style="margin-top:14px">' + (pct === 100 ? 'You can run this journey yourself now.' : passed ? 'Passed — the connections are sticking.' : 'Walk the map once more, then retry.') + '</h2>' +
+        '</div><div class="btn-row">' +
+        '<button class="btn secondary" id="drill-retry">Retry drill</button>' +
+        '<button class="btn" data-go="#/map/' + m.id + '">Back to the map</button>' +
+        '</div></div>';
+      app().innerHTML = html;
+      bindGoLinks();
+      document.getElementById('drill-retry').addEventListener('click', function () {
+        qi = 0; results = []; showQuestion();
+      });
+      checkAchievements();
+    }
+
+    showQuestion();
   }
 
   /* ---------- wiring ---------- */
