@@ -725,13 +725,21 @@
     var current = maps[0];
     maps.forEach(function (c) { if (c.id === classId) current = c; });
 
+    var classes = maps.filter(function (c) { return c.group !== 'journey'; });
+    var journeys = maps.filter(function (c) { return c.group === 'journey'; });
+
+    function chipRow(list) {
+      var s = '<div class="class-chips">';
+      list.forEach(function (c) {
+        s += '<button class="cchip' + (c.id === current.id ? ' active' : '') + '" data-mapclass="' + c.id + '">' + c.icon + ' ' + esc(c.name) + '</button>';
+      });
+      return s + '</div>';
+    }
+
     var html = '<h1>Connections</h1>' +
-      '<p class="sub">Pick a class of business and follow it end to end — client, brokers, placement, premium, exposure management, capital, outwards reinsurance, claims and reserving — with the quirks of that class at each step.</p>' +
-      '<div class="class-chips">';
-    maps.forEach(function (c) {
-      html += '<button class="cchip' + (c.id === current.id ? ' active' : '') + '" data-mapclass="' + c.id + '">' + c.icon + ' ' + esc(c.name) + '</button>';
-    });
-    html += '</div>';
+      '<p class="sub">Follow a class of business — or a journey through the whole machine — end to end: client, brokers, placement, premium, exposure, capital, reinsurance, claims and reserving, with the quirks at each step. Journeys carry a running numbers thread so you can watch the money move.</p>' +
+      '<div class="chip-label">Classes of business</div>' + chipRow(classes) +
+      '<div class="chip-label">Journeys</div>' + chipRow(journeys);
 
     html += '<div class="card" style="padding:14px 15px;margin-bottom:16px"><div class="mod-title">' + current.icon + ' ' + esc(current.name) + '</div>' +
       '<div class="map-desc" style="margin-top:5px">' + esc(current.intro) + '</div></div>';
@@ -739,7 +747,8 @@
     current.stages.forEach(function (s) {
       html += '<div class="map-stage"><div class="map-rail"><div class="map-dot">' + s.icon + '</div></div>' +
         '<div class="map-body"><div class="map-title">' + esc(s.title) + '</div>' +
-        '<div class="map-desc">' + s.desc + '</div>';
+        '<div class="map-desc">' + s.desc + '</div>' +
+        (s.num ? '<div class="map-num">💰 ' + esc(s.num) + '</div>' : '');
       (s.links || []).forEach(function (ref) { html += lessonChip(ref); });
       html += '</div></div>';
     });

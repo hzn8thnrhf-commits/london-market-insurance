@@ -452,6 +452,16 @@ p { line-height: 1.55; }
   font-size: 0.72rem; font-weight: 700; color: var(--accent);
   background: var(--accent-soft); border-radius: 14px; padding: 4px 10px;
 }
+.chip-label {
+  font-size: 0.68rem; font-weight: 800; color: var(--text2);
+  text-transform: uppercase; letter-spacing: 0.09em; margin: 6px 2px 6px;
+}
+.map-num {
+  display: inline-block; margin-top: 7px;
+  font-size: 0.76rem; font-weight: 750; color: var(--amber);
+  background: var(--amber-soft); border: 1px solid color-mix(in srgb, var(--amber) 30%, transparent);
+  border-radius: 9px; padding: 4px 10px;
+}
 
 /* Glossary letter headers */
 .gloss-letter {
