@@ -80,7 +80,7 @@
       policies: [], nextId: 1,
       submissions: [], subIndex: 0, phase: 'uw',   // uw -> ri -> report
       ri: { qs: 0, catA: 0, catL: 0 },
-      market: 1.0, gameOver: false, lastReport: null,
+      market: 1.0, gameOver: false, lastReport: null, dividends: 0, raised: 0,
       records: { catsSurvived: 0, bestQuarter: null, worstQuarter: null, writtenCount: 0 }
     };
     genSubmissions();
@@ -134,13 +134,18 @@
     }
     var histLR = histLoss / (premium * 5);
 
+    // the underwriter's own (imperfect) estimate of the loss ratio, from rate vs benchmark
+    var benchRate = midRate * market;
+    var estELR = Math.min(1.5, cls.baseELR / (rate / benchRate)) * rnd(0.9, 1.1);
+
     return {
       id: G.nextId++, classId: cls.id, name: pick(NAMES[cls.id]),
       limit: limit, tiv: tiv, attach: attach, premium: premium,
       rate: rate, acq: acq, zone: zone, dmg: dmg,
       trueELR: trueELR, tail: cls.tail,
+      benchRate: benchRate, estELR: estELR,
       hist: hist, histLR: histLR,
-      writtenQ: 0, share: 0, earnedQtrs: 0
+      writtenQ: 0, share: 0, earnedQtrs: 0, resv: 0, closed: false
     };
   }
 
@@ -164,14 +169,8 @@
     if (extra && extra.zone === zoneId) s += extra.limit * extra.dmg * (extra.share || 1);
     return s;
   }
-  function casualtyReserves() {
-    var s = 0;
-    G.policies.forEach(function (p) {
-      if (p.tail > 0 && p.writtenQ > 0 && (G.q - p.writtenQ) < (4 + p.tail)) {
-        s += p.premium * p.share * p.trueELR * 0.4;
-      }
-    });
-    return s;
+  function totalReserves() {
+    return G.policies.reduce(function (a, p) { return a + (p.resv || 0); }, 0);
   }
   function catRecovery(netEventLoss) {
     var ri = G.ri;
@@ -188,13 +187,40 @@
     });
     return worst;
   }
-  function requiredCapital(extra) {
-    var prem = annualPremiumInForce() + (extra ? extra.premium * (extra.share || 1) : 0);
-    var premRisk = 0.35 * prem * (1 - G.ri.qs * 0.8);
+  // Class volatility factors for premium risk (long-tail and severity classes carry more)
+  var PREM_FACTOR = { pdf: 0.38, energy: 0.40, cargo: 0.34, casualty: 0.45, cyber: 0.40, dno: 0.42, terror: 0.30, aviation: 0.42 };
+
+  // Diversified capital requirement, with a breakdown for display.
+  // Premium risk diversifies across classes (mix credit); premium, catastrophe and
+  // reserve risks then combine sub-additively (they rarely all go wrong at once).
+  function capitalBreakdown(extra) {
+    var byClass = {};
+    inForce().forEach(function (p) {
+      byClass[p.classId] = (byClass[p.classId] || 0) + p.premium * p.share;
+    });
+    if (extra && extra.classId) byClass[extra.classId] = (byClass[extra.classId] || 0) + extra.premium * (extra.share || 1);
+
+    var totPrem = 0, rawPremRisk = 0, hhi = 0;
+    Object.keys(byClass).forEach(function (c) { totPrem += byClass[c]; });
+    Object.keys(byClass).forEach(function (c) {
+      rawPremRisk += byClass[c] * (PREM_FACTOR[c] || 0.4);
+      if (totPrem > 0) { var s = byClass[c] / totPrem; hhi += s * s; }
+    });
+    var mixFactor = totPrem > 0 ? (0.65 + 0.35 * hhi) : 1;   // 1 class → ×1.0; well spread → ×~0.70
+    var premRisk = rawPremRisk * mixFactor * (1 - G.ri.qs * 0.8);
     var catRisk = maxNetZonePML(extra);
-    var resRisk = 0.25 * casualtyReserves();
-    return Math.max(2e6, premRisk + catRisk + resRisk);
+    var resRisk = 0.35 * totalReserves();
+    var undiversified = premRisk + catRisk + resRisk;
+    var combined = 1.15 * Math.sqrt(premRisk * premRisk + catRisk * catRisk + resRisk * resRisk);
+    var total = Math.max(2e6, combined);
+    return {
+      premRisk: premRisk, catRisk: catRisk, resRisk: resRisk,
+      mixBenefit: rawPremRisk * (1 - G.ri.qs * 0.8) - premRisk,
+      divBenefit: Math.max(0, undiversified - combined),
+      total: total
+    };
   }
+  function requiredCapital(extra) { return capitalBreakdown(extra).total; }
   function solvency() { return G.capital / requiredCapital(null); }
 
   function catRiPrice(A, L) {
@@ -217,8 +243,11 @@
     var events = [];
     var qy = qInYear(G.q);
     var earned = 0, acqCost = 0, attr = 0, large = 0, catGross = 0, catNet = 0;
+    var ibnrProv = 0, strengthening = 0, releases = 0;
     var riCatPremium = catRiPrice(G.ri.catA, G.ri.catL) / 4;
     var reinstatement = 0, qsCommission = 0, qsCededPrem = 0, qsRecovered = 0;
+    var CLS = {};
+    CLASSES.forEach(function (c) { CLS[c.id] = c; });
 
     // earning + attritional + large per policy
     // Loss budgets (of true expected loss ratio): ~50% attritional, ~15% single large
@@ -235,20 +264,39 @@
           large += sev;
           events.push({ icon: '🔥', text: 'Large loss: ' + p.name + ' — gross ' + money(sev) + ' to your line.' });
         }
+      } else {
+        // provision IBNR for the tail as premium earns, at the class benchmark loss ratio
+        var prov = e * 0.35 * CLS[p.classId].baseELR;
+        p.resv = (p.resv || 0) + prov;
+        ibnrProv += prov;
       }
       p.earnedQtrs++;
     });
 
-    // long-tail emergence from earlier years (~35% of the expected loss ratio, delayed)
+    // long-tail emergence: claims draw down the policy's IBNR first;
+    // any excess is reserve strengthening (P&L pain years after the premium)
     G.policies.forEach(function (p) {
-      if (p.tail > 0 && p.writtenQ > 0) {
+      if (p.tail > 0 && p.writtenQ > 0 && !p.closed) {
         var age = G.q - p.writtenQ;
         if (age >= 2 && age < (4 + p.tail)) {
           var emergeProb = 0.35 * p.trueELR * p.premium / ((2 + p.tail) * 0.65 * p.limit);
           if (Math.random() < emergeProb) {
             var sev = p.limit * p.share * rnd(0.3, 1);
-            large += sev;
-            events.push({ icon: '⚖️', text: 'Late claim emerges: ' + p.name + ' (written Y' + yearOf(p.writtenQ) + 'Q' + qInYear(p.writtenQ) + ') — ' + money(sev) + '. The long tail bites.' });
+            var drawn = Math.min(p.resv || 0, sev);
+            p.resv = (p.resv || 0) - drawn;
+            var extraCharge = sev - drawn;
+            strengthening += extraCharge;
+            events.push({ icon: '⚖️', text: 'Late claim: ' + p.name + ' (written Y' + yearOf(p.writtenQ) + 'Q' + qInYear(p.writtenQ) + ') — ' + money(sev) +
+              (extraCharge > 0 ? '. IBNR covered ' + money(drawn) + '; the rest is reserve strengthening.' : ', absorbed by IBNR held.') });
+          }
+        }
+        // tail expires: release whatever IBNR was never needed
+        if (age >= 4 + p.tail) {
+          p.closed = true;
+          if ((p.resv || 0) > 0) {
+            releases += p.resv;
+            events.push({ icon: '🎉', text: 'Reserve release: ' + p.name + ' closed clean — ' + money(p.resv) + ' of IBNR released to profit.' });
+            p.resv = 0;
           }
         }
       }
@@ -285,11 +333,12 @@
     var netAttrLarge = (attr + large) * (1 - qs);
     qsRecovered += (attr + large) * qs;
 
-    var float_ = G.capital + annualPremiumInForce() * 0.5 + casualtyReserves();
+    var float_ = G.capital + annualPremiumInForce() * 0.5 + totalReserves();
     var invIncome = float_ * INV_YIELD_QTR;
 
     var profit = earned - qsCededPrem + qsCommission
       - netAttrLarge - catNet
+      - ibnrProv - strengthening + releases
       - acqCost - OPEX_PER_QTR - riCatPremium - reinstatement
       + invIncome;
 
@@ -299,12 +348,13 @@
     G.yearProfits[yr] = (G.yearProfits[yr] || 0) + profit;
 
     var netEarned = earned - qsCededPrem;
-    var netLosses = netAttrLarge + catNet;
+    var netLosses = netAttrLarge + catNet + ibnrProv + strengthening - releases;
     var cr = netEarned > 0 ? (netLosses + acqCost + OPEX_PER_QTR - qsCommission) / netEarned : 0;
 
     var report = {
       q: G.q, earned: earned, acqCost: acqCost, opex: OPEX_PER_QTR,
       attr: attr, large: large, catGross: catGross, catNet: catNet,
+      ibnrProv: ibnrProv, strengthening: strengthening, releases: releases,
       qsCededPrem: qsCededPrem, qsCommission: qsCommission, qsRecovered: qsRecovered,
       riCatPremium: riCatPremium, reinstatement: reinstatement,
       invIncome: invIncome, profit: profit, cr: cr, events: events,
@@ -368,12 +418,12 @@
       '<h1>🎮 Syndicate</h1>' +
       '<p>Run your own London market insurer. Start with $10m of capital, review ten submissions a quarter, build a portfolio, buy reinsurance — and survive whatever the perils throw at you.</p></div>' +
       '<div class="card"><h3 style="margin-top:0">How it works</h3><ul class="lesson-body" style="margin-left:18px">' +
-      '<li>Each turn is a <strong>quarter</strong>. Review 10 slips: write the full line, half the line, or decline.</li>' +
-      '<li>Every risk adds premium — and <strong>aggregation</strong>. Watch your zone PMLs and solvency ratio.</li>' +
-      '<li>Before closing the quarter, set your <strong>outwards reinsurance</strong>: a quota share and a catastrophe layer.</li>' +
-      '<li>Then the dice roll: attritional losses, large losses, catastrophes — and casualty claims that emerge <strong>years later</strong>.</li>' +
-      '<li>The market cycles: rates soften quarter by quarter and spike after big events. Time your growth.</li>' +
-      '<li>Capital below requirement blocks new business. Capital below zero is <strong>insolvency</strong>.</li></ul>' +
+      '<li>Each turn is a <strong>quarter</strong>. Review 10 slips: write the full line, half the line, or decline. Every slip shows the rate versus benchmark, the loss record, and the <strong>return on the extra capital</strong> the risk consumes.</li>' +
+      '<li>Your capital requirement is <strong>diversified</strong>: spreading across classes and zones earns real credit; concentrating destroys it. The dashboard shows exactly where the requirement comes from.</li>' +
+      '<li>Long-tail classes <strong>provision IBNR</strong> as they earn — clean years release reserves years later; bad books strengthen. The tail is where casualty fortunes are decided.</li>' +
+      '<li>Before closing each quarter: set <strong>outwards reinsurance</strong> (quota share + catastrophe layer) and take <strong>capital actions</strong> — raise when thin, pay dividends when fat.</li>' +
+      '<li>Then the dice roll: attritional losses, large losses, zone catastrophes — with a market that softens quarter by quarter and hardens after events.</li>' +
+      '<li>Below required capital: <strong>regulatory suspension</strong> — no new business until restored. Below zero: insolvency.</li></ul>' +
       '<button class="btn" id="g-start" style="margin-top:6px">Found your syndicate — $10m capital</button></div>';
     document.getElementById('g-start').addEventListener('click', function () { newGame(); render(); });
   }
@@ -413,7 +463,7 @@
       html += '<div class="gstat-row" style="margin-bottom:12px">' +
         statCard('Policies in force', inf.length) +
         statCard('Premium in force', money(prem)) +
-        statCard('Required capital', money(requiredCapital(null))) +
+        statCard('IBNR held', money(totalReserves())) +
         '</div>';
       CLASSES.forEach(function (c) {
         var b = byClass[c.id];
@@ -422,6 +472,17 @@
       });
     }
     html += '</div>';
+
+    // capital requirement breakdown — the diversification lesson made visible
+    var bd = capitalBreakdown(null);
+    html += '<h2>Where your capital requirement comes from</h2><div class="card">' +
+      '<div class="gline"><span>Premium risk (after class-mix diversification)</span><span>' + money(bd.premRisk) + '</span></div>' +
+      '<div class="gline"><span>Catastrophe risk (worst net zone PML)</span><span>' + money(bd.catRisk) + '</span></div>' +
+      '<div class="gline"><span>Reserve risk (on IBNR held)</span><span>' + money(bd.resRisk) + '</span></div>' +
+      '<div class="gline"><span>Diversification between the three</span><span class="gpos">−' + money(bd.divBenefit).replace('−', '') + '</span></div>' +
+      '<div class="gline gtotal"><span>Required capital</span><span>' + money(bd.total) + '</span></div>' +
+      '<div class="d-caption">Risks that don’t go wrong together need less combined capital: spreading across classes shrinks premium risk, and premium, catastrophe and reserve risks combine sub-additively. Concentrate — in one class or one zone — and the credit disappears.</div>' +
+      '</div>';
 
     // PML by zone
     html += '<h2>Aggregations (PML by zone)</h2><div class="card">';
@@ -472,12 +533,38 @@
       return '<span class="ghist' + (h ? ' loss' : '') + '">' + y + ': ' + (h ? money(h) : 'clean') + '</span>';
     }).join('');
 
-    var reqNow = requiredCapital(null);
-    var reqFull = requiredCapital({ premium: r.premium, limit: r.limit, dmg: r.dmg, zone: r.zone, share: 1 });
+    var extraFull = { premium: r.premium, limit: r.limit, dmg: r.dmg, zone: r.zone, share: 1, classId: r.classId };
+    var extraHalf = { premium: r.premium, limit: r.limit, dmg: r.dmg, zone: r.zone, share: 0.5, classId: r.classId };
+    var bdNow = capitalBreakdown(null);
+    var bdFull = capitalBreakdown(extraFull);
+    var reqNow = bdNow.total, reqFull = bdFull.total;
     var solAfter = G.capital / reqFull;
-    var canFull = solAfter >= 1;
-    var reqHalf = requiredCapital({ premium: r.premium, limit: r.limit, dmg: r.dmg, zone: r.zone, share: 0.5 });
-    var canHalf = G.capital / reqHalf >= 1;
+    var suspended = solvency() < 1;
+    var canFull = solAfter >= 1 && !suspended;
+    var canHalf = (G.capital / requiredCapital(extraHalf) >= 1) && !suspended;
+
+    // what drives the marginal capital?
+    var margCap = reqFull - reqNow;
+    var catDelta = bdFull.catRisk - bdNow.catRisk;
+    var capDriver;
+    if (margCap < 60000) {
+      capDriver = 'Almost no extra capital: this risk diversifies your book — its bad years are unlikely to coincide with your existing peaks.';
+    } else if (catDelta > margCap * 0.5) {
+      capDriver = 'Capital moves mainly because this risk grows your <strong>peak accumulation</strong> (' + (r.zone ? esc(ZONES[r.zone].name) : 'catastrophe zone') + '). One event there could now take more of your money, so more capital must stand behind it.';
+    } else {
+      capDriver = 'Capital moves mainly through <strong>premium risk</strong> — more business means more that can go wrong in an ordinary bad year. Diversification across your classes absorbs part of it.';
+    }
+
+    // underwriter's economics (estimate — can be wrong!)
+    var rateDelta = r.rate / r.benchRate - 1;
+    var estMargin = 1 - r.estELR - r.acq;
+    var estProfit = r.premium * estMargin;
+    var rocTxt;
+    if (margCap < 60000) rocTxt = estProfit > 0 ? 'exceptional — profit with negligible extra capital' : 'no capital needed, but the deal itself looks loss-making';
+    else {
+      var roc = estProfit / margCap;
+      rocTxt = (100 * roc).toFixed(0) + '% expected return on the extra capital' + (roc >= 0.15 ? ' — clears a 15% hurdle' : roc >= 0 ? ' — thin against a 15% hurdle' : ' — expected to destroy value');
+    }
 
     var html = header() +
       '<div class="quiz-progress">' + G.submissions.map(function (s, i) {
@@ -493,24 +580,39 @@
       '<table class="slip-table">' +
       (r.tiv ? '<tr><td>Total insured value</td><td>' + money(r.tiv) + '</td></tr>' : '') +
       '<tr><td>' + (r.attach ? 'Layer' : 'Limit') + '</td><td>' + money(r.limit) + (r.attach ? ' xs ' + money(r.attach) : '') + '</td></tr>' +
-      '<tr><td>Rate on ' + (r.tiv ? 'limit' : 'line') + '</td><td>' + (100 * r.rate).toFixed(2) + '%</td></tr>' +
+      '<tr><td>Rate on ' + (r.tiv ? 'limit' : 'line') + '</td><td>' + (100 * r.rate).toFixed(2) + '% <span class="' + (rateDelta >= 0.05 ? 'gpos' : rateDelta <= -0.05 ? 'gneg' : '') + '">(' + (rateDelta >= 0 ? '+' : '') + (100 * rateDelta).toFixed(0) + '% vs class benchmark)</span></td></tr>' +
       '<tr><td>Acquisition cost</td><td>' + (100 * r.acq).toFixed(1) + '%</td></tr>' +
       '<tr><td>Perils</td><td>' + cls.perils + '</td></tr>' +
       (r.zone ? '<tr><td>Cat zone</td><td>' + esc(ZONES[r.zone].name) + ' · PML ' + money(r.limit * r.dmg) + '</td></tr>' : '') +
       (r.tail ? '<tr><td>Tail</td><td>Claims may emerge up to ' + r.tail + ' quarters after expiry</td></tr>' : '') +
       '<tr><td>5-year record</td><td><div class="ghist-row">' + histHtml + '</div>5-yr loss ratio ≈ ' + (100 * r.histLR).toFixed(0) + '%</td></tr>' +
       '</table>' +
-      '<div class="slip-impact"><div class="d-title">If written (full line)</div>' +
+      '<div class="slip-impact"><div class="d-title">The underwriter’s view</div>' +
+      '<div class="map-desc" style="margin-bottom:8px">' +
+      (rateDelta >= 0.1 ? '💪 Priced <strong>' + (100 * rateDelta).toFixed(0) + '% above</strong> the class benchmark — a strong rate.' :
+        rateDelta <= -0.1 ? '⚠️ Priced <strong>' + (100 * Math.abs(rateDelta)).toFixed(0) + '% below</strong> the class benchmark — someone is buying this cheap.' :
+        '➖ Priced close to the class benchmark.') + ' ' +
+      (r.histLR > 0.6 ? 'The 5-year record is poor (' + (100 * r.histLR).toFixed(0) + '% loss ratio) — is the rate change enough to fix it?' :
+        r.histLR > 0.3 ? 'The record is mixed — read it against the rate.' :
+        'The record is clean — but remember: for severity classes a clean history proves little.') +
+      '</div>' +
+      '<div class="gline"><span>Est. annual profit (your estimate)</span><span class="' + (estProfit >= 0 ? 'gpos' : 'gneg') + '">' + money(estProfit) + '</span></div>' +
+      '<div class="gline"><span>Extra capital required</span><span>' + money(margCap) + '</span></div>' +
+      '<div class="gline"><span>Return on marginal capital</span><span>' + rocTxt + '</span></div>' +
+      '</div>' +
+      '<div class="slip-impact"><div class="d-title">Portfolio impact (full line)</div>' +
       '<div class="gline"><span>Required capital</span><span>' + money(reqNow) + ' → ' + money(reqFull) + '</span></div>' +
       '<div class="gline"><span>Solvency after</span><span class="' + (solAfter >= 1.2 ? 'gpos' : solAfter >= 1 ? '' : 'gneg') + '">' + pct(solAfter) + '</span></div>' +
       (r.zone ? '<div class="gline"><span>' + esc(ZONES[r.zone].name) + ' PML</span><span>' + money(zonePML(r.zone, null)) + ' → ' + money(zonePML(r.zone, { zone: r.zone, limit: r.limit, dmg: r.dmg, share: 1 })) + '</span></div>' : '') +
+      '<div class="d-caption" style="margin-top:6px">' + capDriver + '</div>' +
       '</div>' +
       '<div class="btn-row">' +
       '<button class="btn" id="g-full"' + (canFull ? '' : ' disabled') + '>Write 100%</button>' +
       '<button class="btn secondary" id="g-half"' + (canHalf ? '' : ' disabled') + '>Write 50%</button>' +
       '<button class="btn ghost" id="g-decline">Decline</button>' +
       '</div>' +
-      (!canFull ? '<div class="d-caption" style="margin-top:8px">⚠️ Capital headroom is too tight for the full line — half it, decline, or buy more reinsurance next phase.</div>' : '') +
+      (suspended ? '<div class="d-caption" style="margin-top:8px">🚫 <strong>Regulatory suspension:</strong> you are below required capital. You cannot bind new business — decline the rest, then raise capital or buy reinsurance.</div>' :
+        !canFull ? '<div class="d-caption" style="margin-top:8px">⚠️ Capital headroom is too tight for the full line — half it, decline, or buy more reinsurance next phase.</div>' : '') +
       '</div>';
 
     app().innerHTML = html;
@@ -564,6 +666,14 @@
         return '<button class="gopt wide' + (sel ? ' active' : '') + '" data-cat="' + i + '">' +
           (o.L ? money(o.L) + ' xs ' + money(o.A) + ' — ' + money(price) + ' per quarter' : 'No cat cover') + '</button>';
       }).join('') + '</div></div>' +
+      '<div class="card"><h3 style="margin-top:0">Capital actions</h3>' +
+      '<p class="sub">A real board manages capital both ways: raise it when thin (costly — investors charge for rescue money), return it when fat (idle capital drags your return).</p>' +
+      '<div class="btn-row">' +
+      '<button class="btn secondary" id="g-raise">Raise $2.5m<br><small>12% issue cost</small></button>' +
+      '<button class="btn secondary" id="g-div"' + ((G.capital - 1e6) / requiredCapital(null) >= 1.6 ? '' : ' disabled') + '>Pay $1m dividend<br><small>needs solvency ≥ 160% after</small></button>' +
+      '</div>' +
+      ((G.dividends || G.raised) ? '<div class="gline" style="margin-top:8px"><span>Dividends paid / capital raised to date</span><span>' + money(G.dividends) + ' / ' + money(G.raised) + '</span></div>' : '') +
+      '</div>' +
       '<div class="card"><div class="gline"><span>Solvency with these choices</span><span id="ri-sol"><strong>' + pct(solvency()) + '</strong></span></div>' +
       '<button class="btn" id="g-close" style="margin-top:10px">Close the quarter — roll the dice 🎲</button></div>';
 
@@ -580,6 +690,17 @@
         var o = catOpts[Number(b.getAttribute('data-cat'))];
         G.ri.catA = o.A; G.ri.catL = o.L; save(); renderRi();
       });
+    });
+    document.getElementById('g-raise').addEventListener('click', function () {
+      G.capital += 2.5e6 * 0.88;
+      G.raised = (G.raised || 0) + 2.5e6;
+      save(); renderRi();
+    });
+    var gd = document.getElementById('g-div');
+    if (!gd.disabled) gd.addEventListener('click', function () {
+      G.capital -= 1e6;
+      G.dividends = (G.dividends || 0) + 1e6;
+      save(); renderRi();
     });
     document.getElementById('g-close').addEventListener('click', function () {
       resolveQuarter(); go('#/game/report');
@@ -620,6 +741,9 @@
       (r.qsCededPrem ? line('Quota share ceded', r.qsCededPrem, '-') + line('Ceding commission', r.qsCommission, '+') : '') +
       line('Attritional & large losses (net)', (r.attr + r.large) * (1 - G.ri.qs), '-') +
       (r.catGross ? line('Catastrophe losses (net of all reinsurance)', r.catNet, '-') : '') +
+      (r.ibnrProv ? line('IBNR provisioned for long-tail business', r.ibnrProv, '-') : '') +
+      (r.strengthening ? line('Reserve strengthening (claims above IBNR held)', r.strengthening, '-') : '') +
+      (r.releases ? line('Reserve releases (clean years closed)', r.releases, '+') : '') +
       line('Acquisition costs', r.acqCost, '-') +
       line('Operating expenses', r.opex, '-') +
       (r.riCatPremium ? line('Cat reinsurance premium', r.riCatPremium, '-') : '') +
