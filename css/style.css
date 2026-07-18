@@ -550,6 +550,13 @@ p { line-height: 1.55; }
 .gopt.wide { display: block; width: 100%; margin-bottom: 8px; text-align: left; }
 .gopt.active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
 
+/* Capital lab */
+.lab-row { margin-bottom: 12px; }
+.lab-row .lr-head { display: flex; justify-content: space-between; font-size: 0.82rem; font-weight: 650; margin-bottom: 3px; }
+.lab-row .lr-head span:last-child { color: var(--accent); font-variant-numeric: tabular-nums; }
+.lab-row input[type="range"] { width: 100%; accent-color: var(--accent); }
+.preset-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+
 /* Game phase stepper + guided slip flow */
 .gstep-bar { display: flex; gap: 6px; margin: 0 0 14px; }
 .gstep {

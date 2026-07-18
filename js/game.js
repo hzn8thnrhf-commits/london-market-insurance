@@ -631,6 +631,173 @@
     });
   }
 
+  /* ----- Capital & PML Lab: a consequence-free sandbox ----- */
+
+  var LAB = { p1: 2e6, p2: 1e6, p3: 1e6, zA: 3e6, zB: 1e6, ibnr: 1e6, qs: 0, catA: 1e6, catL: 2e6 };
+  var LAB_CAPITAL = 10e6;
+
+  function labCalc(v) {
+    var prems = [[v.p1, 0.38], [v.p2, 0.45], [v.p3, 0.34]];
+    var tot = v.p1 + v.p2 + v.p3, raw = 0, hhi = 0;
+    prems.forEach(function (p) {
+      raw += p[0] * p[1];
+      if (tot > 0) { var s = p[0] / tot; hhi += s * s; }
+    });
+    var mix = tot > 0 ? (0.65 + 0.35 * hhi) : 1;
+    var premRisk = raw * mix * (1 - v.qs * 0.8);
+    function netZone(g) {
+      var n = g * (1 - v.qs);
+      return n - Math.min(v.catL, Math.max(0, n - v.catA));
+    }
+    var nA = netZone(v.zA), nB = netZone(v.zB);
+    var catRisk = Math.max(nA, nB);
+    var resRisk = 0.35 * v.ibnr;
+    var sum = premRisk + catRisk + resRisk;
+    var req = Math.max(2e6, 1.15 * Math.sqrt(premRisk * premRisk + catRisk * catRisk + resRisk * resRisk));
+    return { premRisk: premRisk, catRisk: catRisk, resRisk: resRisk, sum: sum, req: req,
+      mix: mix, hhi: hhi, nA: nA, nB: nB, div: Math.max(0, sum - req), sol: LAB_CAPITAL / req };
+  }
+
+  var LAB_DRILLS = [
+    function () {
+      var g = (8 + Math.floor(Math.random() * 9)) * 5e5;
+      var q = [0, 0.1, 0.2, 0.3][Math.floor(Math.random() * 4)];
+      var A = (2 + Math.floor(Math.random() * 4)) * 5e5;
+      var L = (4 + Math.floor(Math.random() * 5)) * 5e5;
+      var n = g * (1 - q);
+      var ans = n - Math.min(L, Math.max(0, n - A));
+      return { q: 'A zone has a gross PML of ' + money(g) + '. You have a ' + pct(q) + ' quota share and a cat layer of ' + money(L) + ' xs ' + money(A) + '. What is the <strong>net PML</strong>, in $ millions?',
+        answer: Math.round(ans / 1e4) / 100, tol: 0.03, unit: '$ millions',
+        explain: 'Net = gross × (1 − quota share) = ' + money(n) + ', then subtract the layer’s bite: min(limit, anything above the attachment). The layer only helps between its attachment and its top.' };
+    },
+    function () {
+      var cap = (16 + Math.floor(Math.random() * 17)) * 5e5;
+      var req = (8 + Math.floor(Math.random() * 13)) * 5e5;
+      return { q: 'You hold capital of ' + money(cap) + ' and your required capital is ' + money(req) + '. What is your <strong>solvency ratio</strong>, in %?',
+        answer: Math.round(1000 * cap / req) / 10, tol: 2, unit: '%',
+        explain: 'Solvency = capital ÷ requirement. Below 100% means suspension; comfortable books run 130%+ so one bad event doesn’t immediately breach.' };
+    },
+    function () {
+      var n = 2 + Math.floor(Math.random() * 3);
+      var hhi = n * Math.pow(1 / n, 2);
+      var ans = Math.round(100 * (0.65 + 0.35 * hhi)) / 100;
+      return { q: 'Your book has <strong>' + n + ' classes with equal premium</strong>. The concentration score is ' + n + ' × (1/' + n + ')² = ' + hhi.toFixed(2) + ', and the mix factor is 0.65 + 0.35 × that score. What is the mix factor? (2 decimal places)',
+        answer: ans, tol: 0.015, unit: '(factor)',
+        explain: 'One class alone scores 1.0 (no credit); spreading equally over ' + n + ' classes cuts premium risk to ' + Math.round(100 * ans) + '% of its raw value. This is the game’s class-mix diversification credit, made explicit.' };
+    }
+  ];
+
+  function renderLab() {
+    var drill = null, drillDone = false;
+
+    var sliders = [
+      { k: 'p1', label: '🏭 Property premium (cat-exposed)', max: 6e6, step: 25e4 },
+      { k: 'p2', label: '⚖️ Casualty premium (long-tail)', max: 6e6, step: 25e4 },
+      { k: 'p3', label: '🚢 Cargo premium (attritional)', max: 6e6, step: 25e4 },
+      { k: 'zA', label: '🌀 Zone A gross PML (Gulf wind)', max: 8e6, step: 25e4 },
+      { k: 'zB', label: '🌍 Zone B gross PML (quake)', max: 8e6, step: 25e4 },
+      { k: 'ibnr', label: '📊 IBNR reserves held', max: 5e6, step: 25e4 },
+      { k: 'qs', label: '🤝 Quota share ceded', max: 0.4, step: 0.05, isPct: true },
+      { k: 'catA', label: '🛡️ Cat layer attachment', max: 6e6, step: 25e4 },
+      { k: 'catL', label: '🛡️ Cat layer limit', max: 8e6, step: 25e4 }
+    ];
+
+    var presets = [
+      { name: '⚖️ Balanced', v: { p1: 1.5e6, p2: 1.5e6, p3: 1.5e6, zA: 2e6, zB: 2e6, ibnr: 1.5e6, qs: 0.2, catA: 1e6, catL: 2e6 },
+        note: 'Everything spread, everything protected: watch how big the two diversification lines are, and how far the requirement sits below the simple sum.' },
+      { name: '🌀 Concentrated', v: { p1: 4e6, p2: 0, p3: 0, zA: 6e6, zB: 0, ibnr: 0, qs: 0, catA: 0, catL: 0 },
+        note: 'One class, one zone, no protection: the requirement is essentially your PML with a loading. Concentration gets no credit from anyone.' },
+      { name: '🐌 Long-tail heavy', v: { p1: 0.5e6, p2: 4e6, p3: 0.5e6, zA: 0.5e6, zB: 0, ibnr: 4e6, qs: 0, catA: 0, catL: 0 },
+        note: 'Little catastrophe risk, but premium risk (casualty factor 45%) and reserve risk now carry the requirement — capital stays tied up long after the premium is earned.' },
+      { name: '🛡️ Reinsured', v: { p1: 4e6, p2: 0, p3: 0, zA: 6e6, zB: 0, ibnr: 0, qs: 0.3, catA: 1.5e6, catL: 3e6 },
+        note: 'Same concentrated book as before — but a 30% quota share plus a layer chop the net PML down. Compare the requirement with the Concentrated preset: that difference is what reinsurance buys.' }
+    ];
+    var presetNote = '';
+
+    function fmt(v, isPct) { return isPct ? pct(v) : money(v); }
+
+    function outputs() {
+      var c = labCalc(LAB);
+      var worst = Math.max(c.nA, c.nB);
+      var worstGross = c.nA >= c.nB ? LAB.zA : LAB.zB;
+      var stressNet = worst;
+      return '<div class="gline"><span>Premium risk (after mix credit ×' + c.mix.toFixed(2) + ')</span><span>' + money(c.premRisk) + '</span></div>' +
+        '<div class="gline"><span>Catastrophe risk (worst net zone PML)</span><span>' + money(c.catRisk) + '</span></div>' +
+        '<div class="gline"><span>Reserve risk (35% of IBNR)</span><span>' + money(c.resRisk) + '</span></div>' +
+        '<div class="gline"><span>Simple sum</span><span>' + money(c.sum) + '</span></div>' +
+        '<div class="gline"><span>Diversification between risk types</span><span class="gpos">−' + money(c.div).replace('−', '') + '</span></div>' +
+        '<div class="gline gtotal"><span>Required capital</span><span>' + money(c.req) + '</span></div>' +
+        '<div class="gline"><span>Solvency (with $10m of capital)</span><span class="' + (c.sol >= 1.3 ? 'gpos' : c.sol >= 1 ? '' : 'gneg') + '">' + pct(c.sol) + '</span></div>' +
+        '<div class="gline"><span>Zone A net / Zone B net</span><span>' + money(c.nA) + ' / ' + money(c.nB) + '</span></div>' +
+        '<div class="d-caption" style="margin-top:8px">Stress test: if the worst zone’s full PML event (' + money(worstGross) + ' gross) struck now, your net loss would be ' + money(stressNet) + ', leaving capital of ' + money(LAB_CAPITAL - stressNet) + '. ' +
+        (c.hhi > 0.6 && c.premRisk > 0 ? 'Notice: your premium is concentrated (mix factor ×' + c.mix.toFixed(2) + ' — little credit). ' : '') +
+        (c.catRisk > c.premRisk * 2 ? 'Catastrophe risk dominates: the requirement will move almost one-for-one with your net PML — try the layer sliders. ' :
+          c.premRisk > c.catRisk * 2 ? 'Premium risk dominates: zone and layer changes will barely move the requirement — the square-root swallows the smaller components. ' :
+          'No single component dominates — this is where the √-of-squares diversification credit is largest. ') + '</div>';
+    }
+
+    var html = '<button class="backlink" data-ggo="#/game">‹ Back to the game</button>' +
+      '<h1>🧪 Capital & PML Lab</h1>' +
+      '<p class="sub">A sandbox with no consequences: drag the levers and watch the capital requirement respond, using exactly the game’s formula. Two minutes here teaches more intuition than an hour of reading.</p>' +
+      '<div class="chip-label">Try a scenario</div><div class="preset-row">' +
+      presets.map(function (p, i) { return '<button class="gopt" data-preset="' + i + '">' + p.name + '</button>'; }).join('') +
+      '</div><div class="d-caption" id="preset-note" style="margin-bottom:12px"></div>' +
+      '<div class="card">' +
+      sliders.map(function (s) {
+        return '<div class="lab-row"><div class="lr-head"><span>' + s.label + '</span><span id="lv-' + s.k + '">' + fmt(LAB[s.k], s.isPct) + '</span></div>' +
+          '<input type="range" data-lab="' + s.k + '" min="0" max="' + s.max + '" step="' + s.step + '" value="' + LAB[s.k] + '"></div>';
+      }).join('') + '</div>' +
+      '<h2>What the model says</h2><div class="card" id="lab-out">' + outputs() + '</div>' +
+      '<h2>Test yourself</h2><div class="card" id="lab-drill">' +
+      '<p class="sub">Three question types: net PML after reinsurance, solvency ratios, and the mix factor. The quiz calculator logic applies — a phone calculator is fair game.</p>' +
+      '<button class="btn secondary" id="drill-new">Give me a question</button>' +
+      '<div id="drill-area"></div></div>';
+
+    app().innerHTML = html;
+    bindCommon();
+
+    document.querySelectorAll('[data-lab]').forEach(function (inp) {
+      inp.addEventListener('input', function () {
+        var k = inp.getAttribute('data-lab');
+        LAB[k] = Number(inp.value);
+        var s = sliders.filter(function (x) { return x.k === k; })[0];
+        document.getElementById('lv-' + k).textContent = fmt(LAB[k], s.isPct);
+        document.getElementById('lab-out').innerHTML = outputs();
+      });
+    });
+    document.querySelectorAll('[data-preset]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var p = presets[Number(b.getAttribute('data-preset'))];
+        Object.keys(p.v).forEach(function (k) { LAB[k] = p.v[k]; });
+        renderLab();
+        document.getElementById('preset-note').textContent = p.note;
+        window.scrollTo(0, 0);
+      });
+    });
+    document.getElementById('drill-new').addEventListener('click', function () {
+      drill = LAB_DRILLS[Math.floor(Math.random() * LAB_DRILLS.length)]();
+      drillDone = false;
+      var area = document.getElementById('drill-area');
+      area.innerHTML = '<div class="q-text" style="margin-top:12px">' + drill.q + '</div>' +
+        '<input class="num-input" id="drill-in" type="text" inputmode="decimal" placeholder="Your answer">' +
+        '<div class="num-unit">Answer in ' + esc(drill.unit) + '</div>' +
+        '<div id="drill-fb"></div>' +
+        '<button class="btn" id="drill-check" style="margin-top:4px">Check</button>';
+      var inp = document.getElementById('drill-in');
+      inp.focus();
+      document.getElementById('drill-check').addEventListener('click', function () {
+        if (drillDone) { document.getElementById('drill-new').click(); return; }
+        var raw = inp.value.replace(/[,\s%$]/g, '');
+        if (raw === '' || isNaN(Number(raw))) { inp.focus(); return; }
+        var right = Math.abs(Number(raw) - drill.answer) <= drill.tol + 1e-9;
+        drillDone = true;
+        document.getElementById('drill-fb').innerHTML = '<div class="feedback ' + (right ? 'good' : 'bad') + '"><b>' +
+          (right ? 'Correct.' : 'Not quite — the answer is ' + drill.answer + ' ' + esc(drill.unit) + '.') + '</b>' + drill.explain + '</div>';
+        document.getElementById('drill-check').textContent = 'Another question';
+      });
+    });
+  }
+
   function renderIntro() {
     app().innerHTML = '<div class="hero"><div class="kicker">Simulation</div>' +
       '<h1>🎮 Syndicate</h1>' +
@@ -670,7 +837,9 @@
     }
 
     html += '<div class="card tappable" data-ggo="#/game/guide" style="padding:11px 15px"><div class="row">' +
-      '<span style="font-size:1.2rem">📖</span><div class="grow"><div class="mod-meta" style="margin:0">How to read a slip — the guided tour, any time you need it.</div></div><div class="chev">›</div></div></div>';
+      '<span style="font-size:1.2rem">📖</span><div class="grow"><div class="mod-meta" style="margin:0">How to read a slip — the guided tour, any time you need it.</div></div><div class="chev">›</div></div></div>' +
+      '<div class="card tappable" data-ggo="#/game/lab" style="padding:11px 15px"><div class="row">' +
+      '<span style="font-size:1.2rem">🧪</span><div class="grow"><div class="mod-meta" style="margin:0">Capital & PML Lab — drag the levers, build the intuition. No consequences.</div></div><div class="chev">›</div></div></div>';
 
     // portfolio summary
     var inf = inForce();
@@ -706,8 +875,45 @@
       '<div class="gline"><span>Reserve risk (on IBNR held)</span><span>' + money(bd.resRisk) + '</span></div>' +
       '<div class="gline"><span>Diversification between the three</span><span class="gpos">−' + money(bd.divBenefit).replace('−', '') + '</span></div>' +
       '<div class="gline gtotal"><span>Required capital</span><span>' + money(bd.total) + '</span></div>' +
-      '<div class="d-caption">Risks that don’t go wrong together need less combined capital: spreading across classes shrinks premium risk, and premium, catastrophe and reserve risks combine sub-additively. Concentrate — in one class or one zone — and the credit disappears.</div>' +
+      '<div class="d-caption">Risks that don’t go wrong together need less combined capital: spreading across classes shrinks premium risk, and premium, catastrophe and reserve risks combine sub-additively. Concentrate — in one class or one zone — and the credit disappears. ' +
+      '<span class="review-link" data-ggo="#/game/lab">Play with these levers in the Capital Lab ›</span></div>' +
       '</div>';
+
+    // stress test: the worst zone's full PML event, on the live portfolio
+    var stWorst = null, stG = 0;
+    Object.keys(ZONES).forEach(function (z) {
+      var g0 = zonePML(z, null);
+      if (g0 > stG) { stG = g0; stWorst = z; }
+    });
+    if (stWorst) {
+      var stQs = stG * G.ri.qs;
+      var stAfterQs = stG - stQs;
+      var stRemaining = Math.max(0, 2 * (G.ri.catL || 0) - (G.ri.catUsed || 0));
+      var stRec = Math.min(Math.min(G.ri.catL || 0, Math.max(0, stAfterQs - (G.ri.catA || 0))), stRemaining);
+      var stReinst = (G.ri.catL > 0 && stRec > 0) ? (stRec / G.ri.catL) * catRiPrice(G.ri.catA, G.ri.catL) * catSeasonWeight() : 0;
+      var stNet = stAfterQs - stRec + stReinst;
+      var stCapAfter = G.capital - stNet;
+      var stSolAfter = stCapAfter / requiredCapital(null);
+      html += '<h2>Stress test — the market’s exam question</h2><div class="card">' +
+        '<p class="sub">Like Lloyd’s realistic disaster scenarios: assume your worst zone’s full PML event happens <em>tomorrow</em>, and trace it gross to net.</p>' +
+        '<button class="btn secondary" id="g-stress">🌀 Run it: full PML event in ' + esc(ZONES[stWorst].name) + '</button>' +
+        '<div id="stress-out" hidden style="margin-top:12px">' +
+        '<div class="gline"><span>Gross event loss (zone PML)</span><span class="gneg">−' + money(stG).replace('−', '') + '</span></div>' +
+        (stQs > 0 ? '<div class="gline"><span>Quota share takes</span><span class="gpos">+' + money(stQs) + '</span></div>' : '') +
+        (stRec > 0 ? '<div class="gline"><span>Cat layer recovers</span><span class="gpos">+' + money(stRec) + '</span></div>' :
+          '<div class="gline"><span>Cat layer recovers</span><span>' + (G.ri.catL ? 'nothing — event below attachment or limit exhausted' : 'nothing — no layer in place') + '</span></div>') +
+        (stReinst > 0 ? '<div class="gline"><span>Reinstatement premium due</span><span class="gneg">−' + money(stReinst).replace('−', '') + '</span></div>' : '') +
+        '<div class="gline gtotal"><span>Net cost to you</span><span class="gneg">' + money(-stNet) + '</span></div>' +
+        '<div class="gline"><span>Capital after</span><span>' + money(stCapAfter) + '</span></div>' +
+        '<div class="gline"><span>Solvency after</span><span class="' + (stSolAfter >= 1 ? 'gpos' : 'gneg') + '">' + pct(Math.max(0, stSolAfter)) + '</span></div>' +
+        '<div class="d-caption" style="margin-top:6px">' +
+        (stCapAfter <= 0 ? '💀 This event would make you insolvent. Shed aggregate or buy protection — today.' :
+          stSolAfter < 1 ? '⚠️ You would survive, but below required capital: suspended and raising money in a hardening market. Consider more cover while it is cheap.' :
+          stSolAfter < 1.3 ? '😬 Survivable but bruising — one more event in the same season would be the real test (remember: the layer only reinstates once).' :
+          '✅ Comfortably absorbed. Your protections and capital are doing their job — the question is whether you are paying too much for safety you don’t need.') +
+        ' Real severity varies: an actual event could be half this PML or half as much again.</div>' +
+        '</div></div>';
+    }
 
     // PML by zone — with an explicit reinsurance waterfall on the worst zone
     html += '<h2>Aggregations (PML by zone)</h2><div class="card">';
@@ -764,6 +970,15 @@
 
     app().innerHTML = html;
     bindCommon();
+    var stB = document.getElementById('g-stress');
+    if (stB) {
+      var stLabel = stB.textContent;
+      stB.addEventListener('click', function () {
+        var o = document.getElementById('stress-out');
+        o.hidden = !o.hidden;
+        stB.textContent = o.hidden ? stLabel : 'Hide the stress test';
+      });
+    }
   }
 
   function renderSlip() {
@@ -1318,6 +1533,7 @@
   function render(sub) {
     load();
     if (sub === 'guide') return renderGuide();
+    if (sub === 'lab') return renderLab();
     if (!G || !G.q) { renderIntro(); return; }
     if (G.gameOver && sub !== 'report') { renderReport(); return; }
     if (sub === 'slip') return renderSlip();
