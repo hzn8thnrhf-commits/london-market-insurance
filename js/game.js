@@ -277,9 +277,21 @@
     if (!r.zone) return '<div class="gline"><span>Catastrophe zones</span><span>none — no accumulation added</span></div>';
     var g0 = zonePML(r.zone, null);
     var g1 = zonePML(r.zone, { zone: r.zone, limit: r.limit, dmg: r.dmg, share: share });
+    var n0 = netOfRi(g0), n1 = netOfRi(g1);
+    var postQs1 = g1 * (1 - G.ri.qs);
+    var pinned = G.ri.catL > 0 && postQs1 > G.ri.catA && (postQs1 - G.ri.catA) < G.ri.catL;
+    var caption;
+    if (pinned) {
+      var headroom = (G.ri.catA + G.ri.catL) - postQs1;
+      caption = '<strong>Why is net stuck at ' + money(G.ri.catA) + '?</strong> That is your cat layer’s attachment: for any event landing inside the layer (' + money(G.ri.catL) + ' xs ' + money(G.ri.catA) + '), you pay the attachment and the layer pays the rest — so net PML is pinned there while the gross pile grows behind it. ' +
+        'Headroom before the layer exhausts: <strong>' + money(headroom) + '</strong> more of net-of-quota-share PML. Beyond that, net rises dollar-for-dollar again. Also remember: one reinstatement means at most 2× limit per year, and the layer reprices at renewal off your (bigger) gross.';
+    } else {
+      caption = 'Gross = before any reinsurance (the raw pile you are building). Net = after your quota share and cat layer — the figure your capital requirement stands behind.' +
+        (G.ri.catL > 0 && postQs1 >= G.ri.catA + G.ri.catL ? ' <strong>Note:</strong> this zone has outgrown your layer — everything above ' + money(G.ri.catA + G.ri.catL) + ' of post-quota-share PML is unprotected and flows straight into net.' : '');
+    }
     return '<div class="gline"><span>' + esc(ZONES[r.zone].name) + ' PML (gross)</span><span>' + money(g0) + ' → ' + money(g1) + '</span></div>' +
-      '<div class="gline"><span>Same, net of your reinsurance</span><span>' + money(netOfRi(g0)) + ' → ' + money(netOfRi(g1)) + '</span></div>' +
-      '<div class="d-caption">Gross = before any reinsurance (the raw pile you are building). Net = after your quota share and cat layer — this is the figure your capital requirement stands behind. If the net line barely moves, your current cat layer is absorbing the addition; but note the gross line still grew, and protections renew at next year’s prices.</div>';
+      '<div class="gline"><span>Same, net of your reinsurance</span><span>' + money(n0) + ' → ' + money(n1) + (pinned ? ' 📌' : '') + '</span></div>' +
+      '<div class="d-caption">' + caption + '</div>';
   }
 
   // requirement under a hypothetical reinsurance setting (restores state afterwards)
