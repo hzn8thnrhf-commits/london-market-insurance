@@ -656,19 +656,13 @@
       '</svg></div>';
   }
 
-  function chartLayerCake() {
-    // who pays what in the worst zone's full-PML event, post-quota-share
-    var worstZ = null, g = 0;
-    Object.keys(ZONES).forEach(function (z) {
-      var v = zonePML(z, null);
-      if (v > g) { g = v; worstZ = z; }
-    });
-    if (!worstZ || g <= 0) return '';
-    var P = g * (1 - G.ri.qs);
-    var A = Math.min(G.ri.catA || 0, P);
-    var layerEnd = G.ri.catL > 0 ? Math.min((G.ri.catA || 0) + G.ri.catL, P) : A;
+  // generic gross-to-net layer cake: who pays what in a full event of size P
+  function cakeSVG(title, P, A0, L0) {
+    if (P <= 0) return '';
+    var A = Math.min(A0 || 0, P);
+    var layerEnd = L0 > 0 ? Math.min((A0 || 0) + L0, P) : A;
     var youBelow = A, layer = Math.max(0, layerEnd - A), bare = Math.max(0, P - layerEnd);
-    var W = 320, H = 74, padL = 8, padR = 8, plotW = W - padL - padR, barY = 30, barH = 22;
+    var W = 320, H = 88, padL = 8, padR = 8, plotW = W - padL - padR, barY = 26, barH = 22;
     var x = function (v) { return padL + plotW * v / P; };
     function seg(from, to, color, label) {
       if (to - from <= 0) return '';
@@ -676,13 +670,106 @@
       return '<rect x="' + x(from).toFixed(1) + '" y="' + barY + '" width="' + w.toFixed(1) + '" height="' + barH + '" rx="3" fill="var(--' + color + ')" stroke="var(--card)" stroke-width="2"/>' +
         (w > 52 ? '<text x="' + (x(from) + w / 2).toFixed(1) + '" y="' + (barY + barH / 2 + 3) + '" text-anchor="middle" class="ct-seg">' + label + '</text>' : '');
     }
-    return '<div class="chart-wrap"><svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Who pays what in the worst zone event">' +
-      '<text x="' + padL + '" y="10" class="ct-label">' + esc(ZONES[worstZ].name) + ' — full event, after quota share (' + money(P) + ')</text>' +
+    var ticks = '';
+    if (layer > 0) {
+      ticks += '<line x1="' + x(A).toFixed(1) + '" y1="' + (barY + barH) + '" x2="' + x(A).toFixed(1) + '" y2="' + (barY + barH + 5) + '" class="ct-grid"/>' +
+        '<text x="' + x(A).toFixed(1) + '" y="' + (barY + barH + 14) + '" text-anchor="middle" class="ct-tick">attach ' + money(A0) + '</text>';
+      if (layerEnd < P) ticks += '<line x1="' + x(layerEnd).toFixed(1) + '" y1="' + (barY + barH) + '" x2="' + x(layerEnd).toFixed(1) + '" y2="' + (barY + barH + 5) + '" class="ct-grid"/>' +
+        '<text x="' + x(layerEnd).toFixed(1) + '" y="' + (barY + barH + 14) + '" text-anchor="middle" class="ct-tick">exhausts ' + money((A0 || 0) + L0) + '</text>';
+    }
+    return '<div class="chart-wrap"><svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Who pays what in the event">' +
+      '<text x="' + padL + '" y="10" class="ct-label">' + title + '</text>' +
       seg(0, youBelow, 'red', 'you: ' + money(youBelow)) +
       seg(youBelow, layerEnd, 'green', 'layer: ' + money(layer)) +
       seg(layerEnd, P, 'amber', 'bare: ' + money(bare)) +
-      '<text x="' + padL + '" y="' + (barY + barH + 16) + '" class="ct-tick">🟥 your retention · 🟩 layer pays · 🟨 above the layer — unprotected</text>' +
+      ticks +
+      '<text x="' + padL + '" y="' + (H - 4) + '" class="ct-tick">🟥 your retention · 🟩 layer pays · 🟨 above the layer — unprotected</text>' +
       '</svg></div>';
+  }
+
+  function chartLayerCake() {
+    var worstZ = null, g = 0;
+    Object.keys(ZONES).forEach(function (z) {
+      var v = zonePML(z, null);
+      if (v > g) { g = v; worstZ = z; }
+    });
+    if (!worstZ || g <= 0) return '';
+    var P = g * (1 - G.ri.qs);
+    return cakeSVG(esc(ZONES[worstZ].name) + ' — full event, after quota share (' + money(P) + ')', P, G.ri.catA, G.ri.catL);
+  }
+
+  /* fixed class → palette slot (colour follows the entity, never its rank);
+     aviation/political/specie fold permanently into the grey "other" bucket */
+  var CLASS_SLOT = { pdf: 1, casualty: 2, cyber: 3, energy: 4, cargo: 5, dno: 6, treaty: 7, terror: 8 };
+
+  function donutMix(byClass) {
+    var total = 0, buckets = [], otherPrem = 0, otherN = 0;
+    CLASSES.forEach(function (c) {
+      var b = byClass[c.id];
+      if (!b) return;
+      total += b.prem;
+      if (CLASS_SLOT[c.id]) buckets.push({ label: c.icon + ' ' + c.name, color: 'var(--cat' + CLASS_SLOT[c.id] + ')', prem: b.prem, slot: CLASS_SLOT[c.id] });
+      else { otherPrem += b.prem; otherN += b.n; }
+    });
+    if (otherPrem > 0) buckets.push({ label: '🧩 Specialty (aviation, political, specie)', color: 'var(--cat-other)', prem: otherPrem, slot: 99 });
+    if (!buckets.length || total <= 0) return '';
+    buckets.sort(function (a, b) { return a.slot - b.slot; });   // fixed slot order = validated adjacency
+
+    var cx = 62, cy = 62, r = 46, sw = 22;
+    var a0 = -Math.PI / 2, arcs = '';
+    buckets.forEach(function (bk) {
+      var frac = bk.prem / total;
+      var a1 = a0 + frac * 2 * Math.PI;
+      var large = (a1 - a0) > Math.PI ? 1 : 0;
+      var x0 = cx + r * Math.cos(a0), y0 = cy + r * Math.sin(a0);
+      var x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1);
+      if (frac >= 0.999) {
+        arcs += '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="' + bk.color + '" stroke-width="' + sw + '"/>';
+      } else if (frac > 0.002) {
+        arcs += '<path d="M ' + x0.toFixed(2) + ' ' + y0.toFixed(2) + ' A ' + r + ' ' + r + ' 0 ' + large + ' 1 ' + x1.toFixed(2) + ' ' + y1.toFixed(2) + '" fill="none" stroke="' + bk.color + '" stroke-width="' + sw + '" ' +
+          '/><path d="M ' + (cx + (r - sw / 2 - 1) * Math.cos(a1)).toFixed(2) + ' ' + (cy + (r - sw / 2 - 1) * Math.sin(a1)).toFixed(2) + ' L ' + (cx + (r + sw / 2 + 1) * Math.cos(a1)).toFixed(2) + ' ' + (cy + (r + sw / 2 + 1) * Math.sin(a1)).toFixed(2) + '" stroke="var(--card)" stroke-width="2.5"/>';
+      }
+      a0 = a1;
+    });
+
+    var legend = '';
+    buckets.forEach(function (bk) {
+      legend += '<div class="legend-row"><span class="legend-chip" style="background:' + bk.color + '"></span>' +
+        '<span class="grow">' + bk.label + '</span>' +
+        '<span class="legend-val">' + money(bk.prem) + ' · ' + (100 * bk.prem / total).toFixed(0) + '%</span></div>';
+    });
+
+    return '<div class="donut-wrap"><svg width="124" height="124" viewBox="0 0 124 124" role="img" aria-label="Premium in force by class">' + arcs +
+      '<text x="' + cx + '" y="' + (cy - 3) + '" text-anchor="middle" class="ct-value" style="font-size:12px">' + money(total) + '</text>' +
+      '<text x="' + cx + '" y="' + (cy + 11) + '" text-anchor="middle" class="ct-tick">in force</text>' +
+      '</svg><div class="donut-legend">' + legend + '</div></div>' +
+      '<div class="d-caption">Each class keeps its colour for the whole game, however its share moves. A book where one slice dwarfs the ring is a concentration statement — the capital breakdown below will be charging you for it.</div>';
+  }
+
+  /* vertical tower: where your line sits in the risk's structure */
+  function riskTowerSVG(r) {
+    var W = 300, H = 128, barX = 10, barW = 46, top = 16, bh = H - top - 12;
+    function segY(v, total) { return top + bh - bh * v / total; }
+    var s = '';
+    if (r.attach > 0) {
+      var total = r.attach + r.limit;
+      var yA = segY(r.attach, total);
+      s = '<rect x="' + barX + '" y="' + top + '" width="' + barW + '" height="' + (yA - top).toFixed(1) + '" rx="3" fill="var(--accent)" stroke="var(--card)" stroke-width="2"/>' +
+        '<rect x="' + barX + '" y="' + yA.toFixed(1) + '" width="' + barW + '" height="' + (top + bh - yA).toFixed(1) + '" rx="3" fill="var(--line)" stroke="var(--card)" stroke-width="2"/>' +
+        '<text x="' + (barX + barW + 10) + '" y="' + ((top + yA) / 2 + 3).toFixed(1) + '" class="ct-value">your layer: ' + money(r.limit) + ' xs ' + money(r.attach) + '</text>' +
+        '<text x="' + (barX + barW + 10) + '" y="' + ((yA + top + bh) / 2 - 3).toFixed(1) + '" class="ct-tick">' + (r.classId === 'treaty' ? 'cedant retains' : 'primary / insured keep') + '</text>' +
+        '<text x="' + (barX + barW + 10) + '" y="' + ((yA + top + bh) / 2 + 8).toFixed(1) + '" class="ct-tick">the first ' + money(r.attach) + '</text>' +
+        '<text x="' + barX + '" y="' + (top - 5) + '" class="ct-label">Losses climb from the bottom — you pay above ' + money(r.attach) + '</text>';
+    } else if (r.tiv) {
+      var yL = segY(r.limit, r.tiv);
+      s = '<rect x="' + barX + '" y="' + top + '" width="' + barW + '" height="' + (yL - top).toFixed(1) + '" rx="3" fill="var(--line)" stroke="var(--card)" stroke-width="2"/>' +
+        '<rect x="' + barX + '" y="' + yL.toFixed(1) + '" width="' + barW + '" height="' + (top + bh - yL).toFixed(1) + '" rx="3" fill="var(--accent)" stroke="var(--card)" stroke-width="2"/>' +
+        '<text x="' + (barX + barW + 10) + '" y="' + ((yL + top + bh) / 2 + 3).toFixed(1) + '" class="ct-value">your limit: ' + money(r.limit) + ' (first loss)</text>' +
+        '<text x="' + (barX + barW + 10) + '" y="' + ((top + yL) / 2 - 3).toFixed(1) + '" class="ct-tick">value above your limit:</text>' +
+        '<text x="' + (barX + barW + 10) + '" y="' + ((top + yL) / 2 + 8).toFixed(1) + '" class="ct-tick">' + money(r.tiv - r.limit) + ' of ' + money(r.tiv) + ' TIV</text>' +
+        '<text x="' + barX + '" y="' + (top - 5) + '" class="ct-label">You insure the first slice of the total insured value</text>';
+    } else return '';
+    return '<div class="chart-wrap"><svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Where your line sits in the risk structure">' + s + '</svg></div>';
   }
 
   function chartClassMix(byClass) {
@@ -921,7 +1008,10 @@
       var worst = Math.max(c.nA, c.nB);
       var worstGross = c.nA >= c.nB ? LAB.zA : LAB.zB;
       var stressNet = worst;
-      return '<div class="gline"><span>Premium risk (after mix credit ×' + c.mix.toFixed(2) + ')</span><span>' + money(c.premRisk) + '</span></div>' +
+      var worstLabGross = c.nA >= c.nB ? LAB.zA : LAB.zB;
+      var worstPostQs = worstLabGross * (1 - LAB.qs);
+      return (worstPostQs > 0 ? cakeSVG('Worst zone — full event, after quota share (' + money(worstPostQs) + ')', worstPostQs, LAB.catA, LAB.catL) : '') +
+        '<div class="gline"><span>Premium risk (after mix credit ×' + c.mix.toFixed(2) + ')</span><span>' + money(c.premRisk) + '</span></div>' +
         '<div class="gline"><span>Catastrophe risk (worst net zone PML)</span><span>' + money(c.catRisk) + '</span></div>' +
         '<div class="gline"><span>Reserve risk (35% of IBNR)</span><span>' + money(c.resRisk) + '</span></div>' +
         '<div class="gline"><span>Simple sum</span><span>' + money(c.sum) + '</span></div>' +
@@ -1068,7 +1158,7 @@
         statCard('Premium in force', money(prem)) +
         statCard('IBNR held', money(totalReserves())) +
         '</div>';
-      html += chartClassMix(byClass);
+      html += donutMix(byClass);
       html += '<div class="d-caption">“In force” = still providing cover (each policy runs four quarters). Premium in force is the annualised total you would earn if nothing changed. IBNR held is money already set aside for long-tail claims that have not yet surfaced — it belongs to future claimants, not to you, but it earns investment income while it waits.</div>';
     }
     html += '</div>';
@@ -1266,6 +1356,7 @@
         '<tr><td>Rate on ' + (r.tiv ? 'limit' : 'line') + '</td><td>' + (100 * r.rate).toFixed(2) + '%</td></tr>' +
         '<tr><td>Class benchmark rate</td><td>' + (100 * r.benchRate).toFixed(2) + '%</td></tr>' +
         '</table>' +
+        riskTowerSVG(r) +
         '<p class="sub">The rate is the price per unit of risk; the benchmark is what the market currently charges for this class. Compare them — <strong>how does this price look to you?</strong></p>';
       if (gWalk.priceRead === null) {
         html += '<div class="btn-row">' +
@@ -1454,6 +1545,7 @@
       (r.tail ? '<tr><td>Tail</td><td>Claims may emerge up to ' + r.tail + ' quarters after expiry</td></tr>' : '') +
       '<tr><td>5-year record</td><td><div class="ghist-row">' + histHtml + '</div>5-yr loss ratio ≈ ' + (100 * r.histLR).toFixed(0) + '%</td></tr>' +
       '</table>' +
+      riskTowerSVG(r) +
       '<div class="slip-impact"><div class="d-title">The underwriter’s view</div>' +
       '<div class="map-desc" style="margin-bottom:8px">' +
       (rateDelta >= 0.1 ? '💪 Priced <strong>' + (100 * rateDelta).toFixed(0) + '% above</strong> the class benchmark — a strong rate.' :

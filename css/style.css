@@ -556,6 +556,28 @@ p { line-height: 1.55; }
 .gopt.wide { display: block; width: 100%; margin-bottom: 8px; text-align: left; }
 .gopt.active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
 
+/* Categorical palette for portfolio charts — validated for both surfaces
+   (fixed class→slot mapping; never re-ordered, never cycled) */
+:root {
+  --cat1: #2a78d6; --cat2: #008300; --cat3: #e87ba4; --cat4: #eda100;
+  --cat5: #1baf7a; --cat6: #eb6834; --cat7: #4a3aa7; --cat8: #e34948;
+  --cat-other: #8a93a3;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --cat1: #3987e5; --cat2: #008300; --cat3: #d55181; --cat4: #c98500;
+    --cat5: #199e70; --cat6: #d95926; --cat7: #9085e9; --cat8: #e66767;
+    --cat-other: #7c8596;
+  }
+}
+.legend-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 0.8rem; }
+.legend-chip { width: 11px; height: 11px; border-radius: 3.5px; flex: none; }
+.legend-row .grow { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.legend-val { font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.donut-wrap { display: flex; align-items: center; gap: 14px; margin: 8px 0 4px; }
+.donut-wrap svg { flex: none; }
+.donut-legend { flex: 1; min-width: 0; }
+
 /* Game charts */
 .chart-wrap { margin: 10px 0 4px; }
 .chart-wrap svg { display: block; width: 100%; height: auto; }
