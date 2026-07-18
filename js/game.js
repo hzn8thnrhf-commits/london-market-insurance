@@ -51,19 +51,46 @@
     { id: 'aviation', name: 'Airline', icon: '✈️', zone: null, altZone: null,
       baseELR: 0.56, acq: [0.13, 0.20], dmg: [0, 0],
       limits: [6e6, 16e6], rateOnLimit: [0.015, 0.035], tail: 2,
-      perils: 'Hull & liability line on a scheduled airline; severity-driven, litigation tail' }
+      perils: 'Hull & liability line on a scheduled airline; severity-driven, litigation tail' },
+    { id: 'treaty', name: 'Property cat treaty', icon: '🌊', zone: 'gulf', altZone: 'quake',
+      baseELR: 0.35, acq: [0.09, 0.14], dmg: [0.45, 0.75],
+      limits: [5e6, 15e6], rateOnLimit: [0.05, 0.10], tail: 0,
+      perils: 'Inwards reinsurance: a catastrophe excess-of-loss layer protecting a regional insurer’s whole book — you are the reinsurer; the rate IS a rate on line' },
+    { id: 'political', name: 'Political risk & credit', icon: '🌍', zone: 'fincrisis', altZone: null,
+      baseELR: 0.50, acq: [0.12, 0.18], dmg: [0.18, 0.32],
+      limits: [4e6, 12e6], rateOnLimit: [0.020, 0.045], tail: 6,
+      perils: 'Confiscation, expropriation, contract frustration and payment default on cross-border trade; waiting periods, slow-emerging sovereign-linked claims' },
+    { id: 'specie', name: 'Fine art & specie', icon: '💎', zone: 'cbd', altZone: null,
+      baseELR: 0.38, acq: [0.14, 0.22], dmg: [0.06, 0.12],
+      limits: [3e6, 10e6], rateOnLimit: [0.010, 0.022], tail: 0,
+      perils: 'Vault, transit and exhibition cover for bullion, jewellery and fine art; low frequency, theft-and-fire severity' }
   ];
 
-  var NAMES = {
-    pdf: ['Bayshore Resorts Group', 'Cordillera Mining Corp', 'Palmetto Distribution Centres', 'Gulf Coast Hotels', 'Sierra Foods Processing', 'Redwood Data Campuses'],
-    energy: ['Deepwater Horizon-Free Ltd', 'Pelican Offshore Platform', 'Gulfstream Production Co', 'Trident Drilling Venture', 'Blue Water Energy'],
-    cargo: ['Meridian Commodity Traders', 'TransPacific Shipping Line', 'Atlas Grain Exports', 'Orient Electronics Logistics', 'Southern Cross Metals'],
-    casualty: ['Keystone Industrial Corp', 'American Machinery Group', 'Liberty Construction Inc', 'Great Lakes Chemicals', 'Frontier Consumer Products'],
-    cyber: ['Northwind Retail Group', 'MedFirst Health Systems', 'Apex Payment Services', 'CloudNine SaaS Inc', 'Beacon Logistics Tech'],
-    dno: ['Ventura Biotech plc', 'Summit Capital Holdings', 'Nova Semiconductor Corp', 'Meridian Bank Group', 'Zephyr Airlines Holdings'],
-    terror: ['Landmark Tower REIT', 'Grand Central Hotels', 'Financial District Properties', 'Embassy Quarter Estates'],
-    aviation: ['Condor International Airways', 'Pacific Star Airlines', 'EuroRegional Express', 'Meridian Cargo Air']
+  var ATTR_F = { terror: 0.15, treaty: 0.10, specie: 0.35 };   // attritional share differs by class character
+
+  /* procedural insured names — fresh combinations every game */
+  var NAME_FIRST = ['Atlas', 'Meridian', 'Pelican', 'Northwind', 'Caldera', 'Ironbridge', 'Solstice', 'Vantage', 'Bluewater', 'Kestrel', 'Halcyon', 'Redwood', 'Osprey', 'Cordova', 'Trident', 'Aurora', 'Pinnacle', 'Sable', 'Marlin', 'Copperfield', 'Zephyr', 'Granite', 'Palmetto', 'Sequoia', 'Falconer'];
+  var NAME_MID = {
+    pdf: ['Resorts', 'Hotels', 'Manufacturing', 'Distribution', 'Foods', 'Materials', 'Data Centres', 'Retail Properties', 'Timber', 'Beverages'],
+    energy: ['Offshore', 'Drilling', 'Petroleum', 'Energy', 'Exploration', 'Production', 'Subsea'],
+    cargo: ['Shipping', 'Commodities', 'Freight', 'Trading', 'Lines', 'Exports', 'Grain'],
+    casualty: ['Industries', 'Machinery', 'Chemicals', 'Construction', 'Products', 'Engineering', 'Automotive Parts'],
+    cyber: ['Systems', 'Digital', 'Payments', 'Software', 'Health Tech', 'Commerce', 'Cloud Services'],
+    dno: ['Capital', 'Biotech', 'Semiconductors', 'Bancorp', 'Pharma', 'Ventures', 'Media'],
+    terror: ['Tower', 'Plaza', 'Properties', 'Estates', 'Centre', 'Exchange House'],
+    aviation: ['Airways', 'Airlines', 'Air Cargo', 'Regional Air', 'International Air'],
+    political: ['Trade Finance', 'Export Credit', 'Commodities Finance', 'Infrastructure', 'Resources'],
+    specie: ['Fine Art', 'Bullion Vaults', 'Jewellers', 'Gallery', 'Auction House']
   };
+  var NAME_LAST = ['Group', 'Corp', 'Holdings', 'Ltd', 'Inc', 'plc', 'Partners', '& Co', ''];
+  var TREATY_REGION = ['Floridian', 'Gulf States', 'Pacific Coast', 'Sunshine State', 'Southern Atlantic', 'Bayou', 'Golden West', 'Panhandle'];
+  var TREATY_KIND = ['Mutual', 'P&C', 'Family Insurance', 'Farm & Home', 'Assurance'];
+
+  function riskName(classId) {
+    if (classId === 'treaty') return pick(TREATY_REGION) + ' ' + pick(TREATY_KIND) + ' — cat programme';
+    var mid = NAME_MID[classId] || NAME_MID.pdf;
+    return (pick(NAME_FIRST) + ' ' + pick(mid) + ' ' + (Math.random() < 0.75 ? pick(NAME_LAST) : '')).trim();
+  }
 
   /* ---------- state ---------- */
 
@@ -85,6 +112,7 @@
       records: { catsSurvived: 0, bestQuarter: null, worstQuarter: null, writtenCount: 0 }
     };
     genSubmissions();
+    G.news = genNews(null);
     save();
   }
 
@@ -127,6 +155,7 @@
     if (cls.id === 'energy') tiv = Math.round(limit * rnd(8, 20) / 1e6) * 1e6;
     if (cls.id === 'terror') tiv = Math.round(limit * rnd(1.5, 3) / 1e6) * 1e6;
     if (cls.id === 'casualty' || cls.id === 'dno') attach = Math.round(limit * rnd(1, 3) / 1e6) * 1e6;
+    if (cls.id === 'treaty') attach = Math.round(limit * rnd(0.8, 1.8) / 5e5) * 5e5;
 
     // 5-year loss history driven by the hidden risk QUALITY (not the price):
     // this is the signal the rate alone cannot give you
@@ -146,7 +175,7 @@
     var estELR = Math.min(1.5, cls.baseELR / (rate / benchRate)) * rnd(0.95, 1.05);
 
     return {
-      id: G.nextId++, classId: cls.id, name: pick(NAMES[cls.id]),
+      id: G.nextId++, classId: cls.id, name: riskName(cls.id),
       limit: limit, tiv: tiv, attach: attach, premium: premium,
       rate: rate, acq: acq, zone: zone, dmg: dmg,
       trueELR: trueELR, tail: cls.tail,
@@ -182,6 +211,34 @@
       renewalOf: p.id, prevRate: p.rate, prevExp: p.exp || 0,
       writtenQ: 0, share: 0, earnedQtrs: 0, resv: 0, closed: false
     };
+  }
+
+  /* quarterly market news: flavour, seasonality and cycle context */
+  var NEWS_POOL = [
+    { icon: '⚖️', text: 'Regulator warns on casualty reserve adequacy across the market — several carriers strengthen prior years.' },
+    { icon: '💻', text: 'Ransomware gangs shift to double-extortion tactics; cyber underwriters tighten control requirements.' },
+    { icon: '🏗️', text: 'Loss adjusters report rebuild-cost inflation running ahead of declared values — valuation discipline back in focus.' },
+    { icon: '⚖️', text: 'US court ruling widens a liability wording interpretation; excess casualty markets re-examine attachment points.' },
+    { icon: '🆕', text: 'Two startup syndicates approved — fresh capacity chases the better-rated classes.' },
+    { icon: '🚢', text: 'Port congestion lifts cargo accumulations: exposure managers dust off their storage-aggregate reports.' },
+    { icon: '💥', text: 'Political violence flares in two capitals; standalone terror enquiries tick up.' },
+    { icon: '📉', text: 'A mid-sized carrier posts reserve deterioration and pulls out of two classes — brokers reshuffle placements.' },
+    { icon: '🌊', text: 'Retro capacity quotes firm up; reinsurers debate how much collateralised capital returns at renewal.' },
+    { icon: '💎', text: 'Museum heist in Europe reminds specie underwriters why theft severity, not frequency, drives the class.' }
+  ];
+
+  function genNews(prev) {
+    var out = [];
+    var qy = qInYear(G.q);
+    if (G.market >= 1.15) out.push({ icon: '📈', text: 'Hard market: brokers struggle to complete placements and underwriters are naming their price. Discipline is being paid for now — this is when books are built.' });
+    else if (G.market <= 0.85) out.push({ icon: '📉', text: 'The soft market deepens: cheap capacity everywhere and terms drifting wider. The best deal this quarter may be the ones you decline.' });
+    else out.push({ icon: '➖', text: 'Rates broadly flat this quarter. With no price tailwind, risk selection and the loss record do all the work.' });
+    if (qy === 3) out.push({ icon: '🌀', text: 'Hurricane season opens — forecasters expect an active Gulf. Check your zone aggregates and your layer’s remaining limit before the wind does.' });
+    else if (qy === 4) out.push({ icon: '🍂', text: 'Hurricane season winds down; quake and man-made perils don’t keep a calendar.' });
+    else if (qy === 1) out.push({ icon: '🗓️', text: '1 January renewals set the year’s tone — and your quota share treaty is open for renegotiation this quarter only.' });
+    if (prev && prev.catGross > 0) out.push({ icon: '🌊', text: 'Last quarter’s catastrophe ripples on: retro capacity is trapped against developing losses and cat pricing is firming across the market.' });
+    out.push(NEWS_POOL[Math.floor(Math.random() * NEWS_POOL.length)]);
+    return out.slice(0, 4);
   }
 
   function genSubmissions() {
@@ -231,7 +288,7 @@
     return worst;
   }
   // Class volatility factors for premium risk (long-tail and severity classes carry more)
-  var PREM_FACTOR = { pdf: 0.38, energy: 0.40, cargo: 0.34, casualty: 0.45, cyber: 0.40, dno: 0.42, terror: 0.30, aviation: 0.42 };
+  var PREM_FACTOR = { pdf: 0.38, energy: 0.40, cargo: 0.34, casualty: 0.45, cyber: 0.40, dno: 0.42, terror: 0.30, aviation: 0.42, treaty: 0.32, political: 0.44, specie: 0.30 };
 
   // Diversified capital requirement, with a breakdown for display.
   // Premium risk diversifies across classes (mix credit); premium, catastrophe and
@@ -351,7 +408,7 @@
       var e = (p.premium / 4) * p.share;
       earned += e;
       acqCost += (p.premium * p.share * p.acq) / 4;   // acquisition amortised with earning
-      attr += e * p.trueELR * (p.classId === 'terror' ? 0.15 : 0.5) * rnd(0.4, 1.7);
+      attr += e * p.trueELR * (ATTR_F[p.classId] || 0.5) * rnd(0.4, 1.7);
       if (p.tail === 0) {
         var largeProb = 0.1 * p.trueELR * p.premium / p.limit;
         if (Math.random() < largeProb) {
@@ -508,6 +565,7 @@
     G.q++;
     if (qInYear(G.q) === 1) G.ri.catUsed = 0;   // cat layer limit (incl. reinstatement) resets annually
     genSubmissions();
+    G.news = genNews(G.lastReport);
     G.phase = 'uw';
     save();
   }
@@ -846,29 +904,39 @@
 
   function renderDashboard() {
     var html = header() +
-      '<div class="d-caption" style="margin:-4px 4px 14px">💰 <strong>Capital</strong> = your own money standing behind every promise · <strong>Solvency</strong> = capital ÷ required capital (below 100% suspends writing) · <strong>Market</strong> = the price level (1.00 is average; higher = hard market = better rates on offer) · <strong>All-time P&L</strong> = every quarter’s result added up.</div>';
+      '<button class="calc-toggle" id="stat-info" type="button" style="margin:-6px 0 4px;padding:0 0 6px">ⓘ What do these four numbers mean?</button>' +
+      '<div id="stat-info-d" hidden class="d-caption" style="margin:0 4px 12px">💰 <strong>Capital</strong> = your own money standing behind every promise · <strong>Solvency</strong> = capital ÷ required capital (below 100% suspends writing) · <strong>Market</strong> = the price level (1.00 is average; higher = hard market = better rates on offer) · <strong>All-time P&L</strong> = every quarter’s result added up.</div>';
+
+    // this quarter's market news
+    if (G.news && G.news.length) {
+      html += '<div class="card news-card"><div class="d-title" style="margin-bottom:6px">📰 Market news — Year ' + yearOf(G.q) + ' · Q' + qInYear(G.q) + '</div>';
+      G.news.forEach(function (n) {
+        html += '<div class="gevent"><span>' + n.icon + '</span><span>' + n.text + '</span></div>';
+      });
+      html += '</div>';
+    }
+
     var subsLeft = G.submissions.length - G.subIndex;
 
     if (G.phase === 'uw') {
-      html += '<div class="card tappable" data-ggo="#/game/slip"><div class="row"><div class="mod-icon">📥</div>' +
+      html += '<div class="card tappable action-card" data-ggo="#/game/slip"><div class="row"><div class="mod-icon">📥</div>' +
         '<div class="grow"><div class="mod-title">Review submissions</div>' +
         '<div class="mod-meta">' + subsLeft + ' of 10 slips waiting for your decision</div></div><div class="chev">›</div></div></div>';
     }
     if (G.phase === 'ri') {
-      html += '<div class="card tappable" data-ggo="#/game/ri"><div class="row"><div class="mod-icon">🛡️</div>' +
+      html += '<div class="card tappable action-card" data-ggo="#/game/ri"><div class="row"><div class="mod-icon">🛡️</div>' +
         '<div class="grow"><div class="mod-title">Set reinsurance &amp; close the quarter</div>' +
         '<div class="mod-meta">Quota share, catastrophe layer — then roll the dice</div></div><div class="chev">›</div></div></div>';
     }
     if (G.phase === 'report' && G.lastReport) {
-      html += '<div class="card tappable" data-ggo="#/game/report"><div class="row"><div class="mod-icon">📊</div>' +
+      html += '<div class="card tappable action-card" data-ggo="#/game/report"><div class="row"><div class="mod-icon">📊</div>' +
         '<div class="grow"><div class="mod-title">Quarter report ready</div>' +
         '<div class="mod-meta">See the result and move to the next quarter</div></div><div class="chev">›</div></div></div>';
     }
 
-    html += '<div class="card tappable" data-ggo="#/game/guide" style="padding:11px 15px"><div class="row">' +
-      '<span style="font-size:1.2rem">📖</span><div class="grow"><div class="mod-meta" style="margin:0">How to read a slip — the guided tour, any time you need it.</div></div><div class="chev">›</div></div></div>' +
-      '<div class="card tappable" data-ggo="#/game/lab" style="padding:11px 15px"><div class="row">' +
-      '<span style="font-size:1.2rem">🧪</span><div class="grow"><div class="mod-meta" style="margin:0">Capital & PML Lab — drag the levers, build the intuition. No consequences.</div></div><div class="chev">›</div></div></div>';
+    html += '<div class="btn-row" style="margin:2px 0 4px">' +
+      '<button class="btn secondary" data-ggo="#/game/guide">📖 Slip guide</button>' +
+      '<button class="btn secondary" data-ggo="#/game/lab">🧪 Capital Lab</button></div>';
 
     // portfolio summary
     var inf = inForce();
@@ -999,6 +1067,11 @@
 
     app().innerHTML = html;
     bindCommon();
+    var si = document.getElementById('stat-info');
+    if (si) si.addEventListener('click', function () {
+      var d = document.getElementById('stat-info-d');
+      d.hidden = !d.hidden;
+    });
     var stB = document.getElementById('g-stress');
     if (stB) {
       var stLabel = stB.textContent;

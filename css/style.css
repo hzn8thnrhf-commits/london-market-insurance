@@ -523,6 +523,12 @@ p { line-height: 1.55; }
 .gevent { display: flex; gap: 10px; padding: 7px 0; font-size: 0.86rem; line-height: 1.5; align-items: flex-start; }
 .gevent span:first-child { flex: none; font-size: 1.1rem; }
 
+.card.slip { border-top: 3px solid var(--accent); }
+.card.news-card { border-left: 3px solid var(--gold); }
+.card.action-card {
+  border: 1.5px solid color-mix(in srgb, var(--accent) 50%, transparent);
+  box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow);
+}
 .slip .slip-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
 .slip-class {
   font-size: 0.72rem; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase;
