@@ -266,6 +266,22 @@
   function requiredCapital(extra) { return capitalBreakdown(extra).total; }
   function solvency() { return G.capital / requiredCapital(null); }
 
+  // a zone's gross PML netted through the current quota share and cat layer
+  function netOfRi(gross) {
+    var n = gross * (1 - G.ri.qs);
+    return n - Math.min(G.ri.catL || 0, Math.max(0, n - (G.ri.catA || 0)));
+  }
+
+  // gross → net PML impact lines for a slip's zone, with explicit labelling
+  function pmlImpactLines(r, share) {
+    if (!r.zone) return '<div class="gline"><span>Catastrophe zones</span><span>none — no accumulation added</span></div>';
+    var g0 = zonePML(r.zone, null);
+    var g1 = zonePML(r.zone, { zone: r.zone, limit: r.limit, dmg: r.dmg, share: share });
+    return '<div class="gline"><span>' + esc(ZONES[r.zone].name) + ' PML (gross)</span><span>' + money(g0) + ' → ' + money(g1) + '</span></div>' +
+      '<div class="gline"><span>Same, net of your reinsurance</span><span>' + money(netOfRi(g0)) + ' → ' + money(netOfRi(g1)) + '</span></div>' +
+      '<div class="d-caption">Gross = before any reinsurance (the raw pile you are building). Net = after your quota share and cat layer — this is the figure your capital requirement stands behind. If the net line barely moves, your current cat layer is absorbing the addition; but note the gross line still grew, and protections renew at next year’s prices.</div>';
+  }
+
   // requirement under a hypothetical reinsurance setting (restores state afterwards)
   function reqWithRi(qs, catA, catL) {
     var s = G.ri, old = { qs: s.qs, catA: s.catA, catL: s.catL };
@@ -589,7 +605,8 @@
       '<div class="tut-frag"><div class="slip-impact"><div class="d-title">Portfolio impact (full line)</div>' +
       '<div class="gline"><span>Required capital</span><span>$2.68m → $3.09m</span></div>' +
       '<div class="gline"><span>Solvency after</span><span class="gpos">324%</span></div>' +
-      '<div class="gline"><span>US Gulf — windstorm PML</span><span>$8.28m → $9.64m</span></div>' +
+      '<div class="gline"><span>US Gulf — windstorm PML (gross)</span><span>$8.28m → $9.64m</span></div>' +
+      '<div class="gline"><span>Same, net of your reinsurance</span><span>$4.63m → $5.72m</span></div>' +
       '</div></div>' +
       note(7,
         'The same risk is a <strong>different decision depending on your existing book</strong>. Here it would push your Gulf PML from $8.28m to $9.64m and your required capital up $410k, leaving solvency at a comfortable 324%. If your Gulf pile were already at your limit, this identical slip would deserve a decline. Tap <em>“Show the capital calculation”</em> on any real slip to see the full arithmetic: premium risk + catastrophe risk + reserve risk, combined through squares so the biggest one dominates.',
@@ -1101,7 +1118,7 @@
         '<div class="slip-impact">' +
         '<div class="gline"><span>Required capital</span><span>' + money(bdN.total) + ' → ' + money(bdF.total) + '</span></div>' +
         '<div class="gline"><span>Solvency after</span><span>' + pct(G.capital / bdF.total) + '</span></div>' +
-        (r.zone ? '<div class="gline"><span>' + esc(ZONES[r.zone].name) + ' PML</span><span>' + money(zonePML(r.zone, null)) + ' → ' + money(zonePML(r.zone, { zone: r.zone, limit: r.limit, dmg: r.dmg, share: 1 })) + '</span></div>' : '<div class="gline"><span>Catastrophe zones</span><span>none — no accumulation added</span></div>') +
+        pmlImpactLines(r, 1) +
         '</div>' +
         '<div class="d-caption" style="margin-top:8px">' +
         (mc < 60000 ? 'Almost no extra capital: its bad years are unlikely to coincide with your existing peaks — diversification absorbs it.' :
@@ -1259,7 +1276,7 @@
       '<div class="slip-impact"><div class="d-title">Portfolio impact (full line)</div>' +
       '<div class="gline"><span>Required capital</span><span>' + money(reqNow) + ' → ' + money(reqFull) + '</span></div>' +
       '<div class="gline"><span>Solvency after</span><span class="' + (solAfter >= 1.2 ? 'gpos' : solAfter >= 1 ? '' : 'gneg') + '">' + pct(solAfter) + '</span></div>' +
-      (r.zone ? '<div class="gline"><span>' + esc(ZONES[r.zone].name) + ' PML</span><span>' + money(zonePML(r.zone, null)) + ' → ' + money(zonePML(r.zone, { zone: r.zone, limit: r.limit, dmg: r.dmg, share: 1 })) + '</span></div>' : '') +
+      pmlImpactLines(r, 1) +
       '<div class="d-caption" style="margin-top:6px">' + capDriver + '</div>' +
       '<button class="calc-toggle" id="cap-how" type="button" style="padding-top:8px">🧮 Show the capital calculation</button>' +
       '<div id="cap-detail" hidden>' +
