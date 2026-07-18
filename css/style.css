@@ -556,6 +556,16 @@ p { line-height: 1.55; }
 .gopt.wide { display: block; width: 100%; margin-bottom: 8px; text-align: left; }
 .gopt.active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
 
+/* Game charts */
+.chart-wrap { margin: 10px 0 4px; }
+.chart-wrap svg { display: block; width: 100%; height: auto; }
+.ct-label { font-size: 8.5px; font-weight: 700; fill: var(--text2); letter-spacing: 0.04em; }
+.ct-tick { font-size: 8px; fill: var(--text2); }
+.ct-value { font-size: 9.5px; font-weight: 750; fill: var(--text); font-variant-numeric: tabular-nums; }
+.ct-seg { font-size: 8.5px; font-weight: 750; fill: #fff; }
+.ct-grid { stroke: var(--line); stroke-width: 1; }
+.ct-guide { stroke: var(--text2); stroke-width: 1; stroke-dasharray: 3 3; opacity: 0.6; }
+
 /* Capital lab */
 .lab-row { margin-bottom: 12px; }
 .lab-row .lr-head { display: flex; justify-content: space-between; font-size: 0.82rem; font-weight: 650; margin-bottom: 3px; }

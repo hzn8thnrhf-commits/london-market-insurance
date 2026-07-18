@@ -590,6 +590,119 @@
       '</div></div>';
   }
 
+  /* ---------- charts (inline SVG, theme-aware) ---------- */
+
+  function chartHistory(hist) {
+    var data = hist.slice(-12);
+    if (data.length < 2) return '';
+    var W = 320, padL = 8, padR = 52, plotW = W - padL - padR;
+    var xs = function (i) { return padL + plotW * i / (data.length - 1); };
+
+    // capital line (top panel)
+    var capH = 64, capTop = 14;
+    var caps = data.map(function (d) { return d.capital; });
+    var cMin = Math.min.apply(null, caps), cMax = Math.max.apply(null, caps);
+    if (cMax - cMin < 1e5) { cMax += 1e5; cMin -= 1e5; }
+    var pad = (cMax - cMin) * 0.08; cMin -= pad; cMax += pad;
+    var cy = function (v) { return capTop + capH - capH * (v - cMin) / (cMax - cMin); };
+    var linePts = data.map(function (d, i) { return xs(i).toFixed(1) + ',' + cy(d.capital).toFixed(1); }).join(' ');
+
+    // profit bars (bottom panel, symmetric about zero)
+    var barTop = capTop + capH + 22, barH = 46;
+    var maxAbs = Math.max.apply(null, data.map(function (d) { return Math.abs(d.profit); }));
+    if (maxAbs < 1e5) maxAbs = 1e5;
+    var zeroY = barTop + barH / 2;
+    var bw = Math.max(4, Math.min(14, plotW / data.length - 3));
+    var bars = data.map(function (d, i) {
+      var h = (barH / 2) * Math.abs(d.profit) / maxAbs;
+      var y = d.profit >= 0 ? zeroY - h : zeroY;
+      return '<rect x="' + (xs(i) - bw / 2).toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + bw + '" height="' + Math.max(1.5, h).toFixed(1) + '" rx="2" fill="var(--' + (d.profit >= 0 ? 'green' : 'red') + ')"/>';
+    }).join('');
+
+    var qLabel = function (d) { return 'Y' + yearOf(d.q) + 'Q' + qInYear(d.q); };
+    var H = barTop + barH + 18;
+    return '<div class="chart-wrap"><svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Capital and quarterly profit by quarter">' +
+      '<text x="' + padL + '" y="9" class="ct-label">Capital</text>' +
+      '<line x1="' + padL + '" y1="' + (capTop + capH) + '" x2="' + (W - padR) + '" y2="' + (capTop + capH) + '" class="ct-grid"/>' +
+      '<polyline points="' + linePts + '" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>' +
+      '<circle cx="' + xs(data.length - 1).toFixed(1) + '" cy="' + cy(caps[caps.length - 1]).toFixed(1) + '" r="3.5" fill="var(--accent)" stroke="var(--card)" stroke-width="2"/>' +
+      '<text x="' + (W - padR + 6) + '" y="' + (cy(caps[caps.length - 1]) + 3).toFixed(1) + '" class="ct-value">' + money(caps[caps.length - 1]) + '</text>' +
+      '<text x="' + padL + '" y="' + (barTop - 6) + '" class="ct-label">Quarterly result</text>' +
+      '<line x1="' + padL + '" y1="' + zeroY + '" x2="' + (W - padR) + '" y2="' + zeroY + '" class="ct-grid"/>' +
+      bars +
+      '<text x="' + (W - padR + 6) + '" y="' + (zeroY + 3) + '" class="ct-value">' + money(data[data.length - 1].profit) + '</text>' +
+      '<text x="' + padL + '" y="' + (H - 4) + '" class="ct-tick">' + qLabel(data[0]) + '</text>' +
+      '<text x="' + (W - padR) + '" y="' + (H - 4) + '" class="ct-tick" text-anchor="end">' + qLabel(data[data.length - 1]) + '</text>' +
+      '</svg></div>';
+  }
+
+  function chartCR(hist) {
+    var data = hist.slice(-12);
+    if (data.length < 2) return '';
+    var W = 320, H = 56, padL = 8, padR = 52, plotW = W - padL - padR, top = 10, ph = 36;
+    var crs = data.map(function (d) { return 100 * d.cr; });
+    var lo = Math.min(60, Math.min.apply(null, crs) - 5);
+    var hi = Math.max(130, Math.max.apply(null, crs) + 5);
+    var y = function (v) { return top + ph - ph * (v - lo) / (hi - lo); };
+    var xs = function (i) { return padL + plotW * i / (data.length - 1); };
+    var pts = data.map(function (d, i) { return xs(i).toFixed(1) + ',' + y(100 * d.cr).toFixed(1); }).join(' ');
+    var last = crs[crs.length - 1];
+    return '<div class="chart-wrap"><svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Net combined ratio by quarter, versus the 100 percent breakeven line">' +
+      '<text x="' + padL + '" y="8" class="ct-label">Combined ratio · dashed line = 100% breakeven</text>' +
+      '<line x1="' + padL + '" y1="' + y(100).toFixed(1) + '" x2="' + (W - padR) + '" y2="' + y(100).toFixed(1) + '" class="ct-guide"/>' +
+      '<polyline points="' + pts + '" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>' +
+      '<circle cx="' + xs(data.length - 1).toFixed(1) + '" cy="' + y(last).toFixed(1) + '" r="3.5" fill="var(--gold)" stroke="var(--card)" stroke-width="2"/>' +
+      '<text x="' + (W - padR + 6) + '" y="' + (y(last) + 3).toFixed(1) + '" class="ct-value">' + last.toFixed(0) + '%</text>' +
+      '</svg></div>';
+  }
+
+  function chartLayerCake() {
+    // who pays what in the worst zone's full-PML event, post-quota-share
+    var worstZ = null, g = 0;
+    Object.keys(ZONES).forEach(function (z) {
+      var v = zonePML(z, null);
+      if (v > g) { g = v; worstZ = z; }
+    });
+    if (!worstZ || g <= 0) return '';
+    var P = g * (1 - G.ri.qs);
+    var A = Math.min(G.ri.catA || 0, P);
+    var layerEnd = G.ri.catL > 0 ? Math.min((G.ri.catA || 0) + G.ri.catL, P) : A;
+    var youBelow = A, layer = Math.max(0, layerEnd - A), bare = Math.max(0, P - layerEnd);
+    var W = 320, H = 74, padL = 8, padR = 8, plotW = W - padL - padR, barY = 30, barH = 22;
+    var x = function (v) { return padL + plotW * v / P; };
+    function seg(from, to, color, label) {
+      if (to - from <= 0) return '';
+      var w = x(to) - x(from);
+      return '<rect x="' + x(from).toFixed(1) + '" y="' + barY + '" width="' + w.toFixed(1) + '" height="' + barH + '" rx="3" fill="var(--' + color + ')" stroke="var(--card)" stroke-width="2"/>' +
+        (w > 52 ? '<text x="' + (x(from) + w / 2).toFixed(1) + '" y="' + (barY + barH / 2 + 3) + '" text-anchor="middle" class="ct-seg">' + label + '</text>' : '');
+    }
+    return '<div class="chart-wrap"><svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Who pays what in the worst zone event">' +
+      '<text x="' + padL + '" y="10" class="ct-label">' + esc(ZONES[worstZ].name) + ' — full event, after quota share (' + money(P) + ')</text>' +
+      seg(0, youBelow, 'red', 'you: ' + money(youBelow)) +
+      seg(youBelow, layerEnd, 'green', 'layer: ' + money(layer)) +
+      seg(layerEnd, P, 'amber', 'bare: ' + money(bare)) +
+      '<text x="' + padL + '" y="' + (barY + barH + 16) + '" class="ct-tick">🟥 your retention · 🟩 layer pays · 🟨 above the layer — unprotected</text>' +
+      '</svg></div>';
+  }
+
+  function chartClassMix(byClass) {
+    var rows = [];
+    CLASSES.forEach(function (c) { if (byClass[c.id]) rows.push({ c: c, prem: byClass[c.id].prem, n: byClass[c.id].n }); });
+    if (!rows.length) return '';
+    rows.sort(function (a, b) { return b.prem - a.prem; });
+    var top = rows.slice(0, 6);
+    var other = rows.slice(6).reduce(function (a, r) { return a + r.prem; }, 0);
+    var max = top[0].prem;
+    var html = '';
+    top.forEach(function (r) {
+      html += '<div class="gline" style="padding:4px 0 2px"><span>' + r.c.icon + ' ' + esc(r.c.name) + ' · ' + r.n + '</span><span>' + money(r.prem) + '</span></div>' +
+        '<div class="progress-track" style="margin:0 0 7px"><div class="progress-fill" style="width:' + Math.max(3, 100 * r.prem / max).toFixed(0) + '%"></div></div>';
+    });
+    if (other > 0) html += '<div class="gline" style="padding:4px 0 2px"><span>Other classes</span><span>' + money(other) + '</span></div>' +
+      '<div class="progress-track" style="margin:0 0 7px"><div class="progress-fill" style="width:' + Math.max(3, 100 * other / max).toFixed(0) + '%"></div></div>';
+    return html;
+  }
+
   function stepperBar(cur) {
     var steps = [
       { id: 'uw', label: '1 · Underwrite (10 slips)' },
@@ -955,11 +1068,7 @@
         statCard('Premium in force', money(prem)) +
         statCard('IBNR held', money(totalReserves())) +
         '</div>';
-      CLASSES.forEach(function (c) {
-        var b = byClass[c.id];
-        if (!b) return;
-        html += '<div class="gline"><span>' + c.icon + ' ' + esc(c.name) + '</span><span>' + b.n + ' · ' + money(b.prem) + '</span></div>';
-      });
+      html += chartClassMix(byClass);
       html += '<div class="d-caption">“In force” = still providing cover (each policy runs four quarters). Premium in force is the annualised total you would earn if nothing changed. IBNR held is money already set aside for long-tail claims that have not yet surfaced — it belongs to future claimants, not to you, but it earns investment income while it waits.</div>';
     }
     html += '</div>';
@@ -1055,6 +1164,7 @@
         statCard('Best quarter', G.records.bestQuarter !== null ? money(G.records.bestQuarter) : '—') +
         statCard('Cats endured', G.records.catsSurvived) +
         '</div>';
+      html += chartHistory(G.history) + chartCR(G.history);
       if (G.reads && G.reads.n >= 6) {
         html += '<div class="gline"><span>Slip-reading accuracy (your price & record calls)</span><span>' + Math.round(100 * G.reads.c / G.reads.n) + '% over ' + G.reads.n + ' reads</span></div>' +
           '<div class="d-caption">How often your guided-mode judgements matched the data. Above ~80% and you are genuinely reading slips — consider fast mode.</div>';
@@ -1456,6 +1566,7 @@
         return '<button class="gopt wide' + (sel ? ' active' : '') + '" data-cat="' + i + '">' +
           (o.L ? money(o.L) + ' xs ' + money(o.A) + ' — ' + money(price) + ' this quarter · frees ' + money(freed) + ' of capital' : 'No cat cover') + '</button>';
       }).join('') + '</div>' +
+      chartLayerCake() +
       '<div class="d-caption">“Frees capital” = the fall in your requirement versus holding no cat cover: the layer chops the top off your worst zone’s net PML, which is usually your dominant capital component. Reading the options: a <strong>lower attachment</strong> means protection starts sooner (dearer, frees more); a <strong>bigger limit</strong> caps more of the tail. The best buy is usually the layer whose capital freed is largest relative to its premium — divide one by the other before choosing.</div>' +
       '</div>' +
       '<div class="card"><h3 style="margin-top:0">Capital actions</h3>' +
