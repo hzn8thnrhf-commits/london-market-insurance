@@ -291,6 +291,59 @@ window.LMA_MODULES.push({
           answer: 0,
           explain: 'Payment terms with cancellation rights protect insurers from providing cover indefinitely while the premium remains unpaid.' }
       ]
+    },
+    {
+      id: 'processing',
+      title: 'Premium’s paper trail: advice notes, due dates and de-linking',
+      minutes: 8,
+      body: `
+<p>Between “the client owes premium” and “cash in the insurer’s trust fund” runs a processing pipeline with its own vocabulary. Anyone working near London market finance meets these terms in week one — here is what they mean.</p>
+<h3>The advice note: premium’s passport</h3>
+<p>To move premium through the central bureau, the broker submits a <strong>premium advice note</strong> (the London Premium Advice Note) for each transaction: identifying the contract, the amount, currency, each carrier’s share, brokerage and deductions. The bureau checks it against the signed contract, allocates the signing reference, and generates the accounting entries every subscriber’s systems consume. A rejected advice note — mismatched shares, missing tax data — stalls the premium for everyone: data quality here is cash flow.</p>
+<h3>Terms of trade and the settlement due date</h3>
+<p>Every placement carries <strong>terms of trade</strong>: the number of days the broker has to settle premium to insurers, producing a <strong>settlement due date</strong> for each instalment. Insurers track performance against these dates; persistent late settlement triggers escalation, and the premium payment condition (previous lesson) supplies the teeth. Meanwhile the broker legitimately holds client premium during the settlement window under its terms of business — one reason broker balance-sheet strength matters to the market.</p>
+<h3>De-linking: cash before paperwork</h3>
+<p>Historically premium could not settle until the contract was fully signed and processed — so slow paperwork delayed everyone’s cash. <strong>De-linking</strong> separates the two: premium settles on its due date against the advice note, even if final signing processing completes later, with records matched afterwards. The insurer gets its cash on time; the bureaucracy catches up behind. When you see “de-linked premium” in a ledger, that is all it means: money that ran ahead of the paperwork, deliberately.</p>
+<h3>Adjustments ride the same rails</h3>
+<p>Additional premiums, return premiums and reinstatement premiums (earlier lessons) each travel as endorsements with their own advice notes and due dates — which is why a single contract generates a <em>stream</em> of premium transactions over its life, and why “premium” in a data warehouse is transactions to be summed, not one number to be looked up.</p>
+<div class="example">
+<div class="ex-label">Worked example</div>
+<p>A policy incepts 1 March, premium US$800,000, terms of trade 60 days: settlement due date 30 April. The broker submits the advice note in mid-March; the bureau validates it and, under de-linking, the carriers receive their shares (less 15% brokerage) through central settlement on 30 April — even though a wording query delays final signing until June. In July an endorsement adds a location for US$120,000 additional premium: a fresh advice note, a fresh due date 60 days on, another netted settlement. One contract; three months apart; two premium transactions — and every carrier’s ledger shows both, keyed to the same signing reference.</p>
+</div>
+<div class="keypoint">
+<div class="ex-label">Key point</div>
+<p>Premium moves on <strong>advice notes</strong> checked by the bureau, against <strong>settlement due dates</strong> set by terms of trade, with <strong>de-linking</strong> letting cash settle before processing completes. A contract is a stream of premium transactions — original, adjustments, reinstatements — not a single number.</p>
+</div>`,
+      quiz: [
+        { type: 'num',
+          q: 'A policy incepts 15 June with terms of trade of 90 days. Roughly when is the settlement due date? (Answer as days after 15 June.)',
+          answer: 90, tol: 1, unit: 'days',
+          explain: 'Terms of trade set the settlement window: premium is due to insurers 90 days after inception — mid-September. Insurers track broker performance against exactly this date.' },
+        { type: 'num',
+          q: 'An advice note covers US$500,000 of premium with 12.5% brokerage, for a carrier with a 20% signed line. What cash does that carrier receive at settlement, in US$?',
+          answer: 87500, tol: 500, unit: 'US$',
+          explain: '20% share of US$500,000 = US$100,000, less 12.5% brokerage = US$87,500 — the advice note carries exactly this arithmetic for every subscriber.' },
+        { type: 'mc',
+          q: 'What does “de-linking” achieve?',
+          options: [
+            'It separates the broker from the client',
+            'Premium settles on its due date against the advice note even if final signing processing completes later — cash no longer waits for paperwork',
+            'It removes premium from the trust funds',
+            'It cancels the brokerage deduction'
+          ],
+          answer: 1,
+          explain: 'De-linking broke the historic chain where slow document processing delayed everyone’s cash. Settlement and signing proceed on separate tracks and are matched afterwards.' },
+        { type: 'mc',
+          q: 'Why does a single London market contract typically generate many premium transactions over its life?',
+          options: [
+            'Because bureaus split premiums randomly',
+            'Because adjustments, instalments, additional and return premiums, and reinstatements each travel as separate advised transactions with their own due dates',
+            'Because each carrier is billed separately by the client',
+            'It doesn’t — one contract, one transaction'
+          ],
+          answer: 1,
+          explain: 'The premium lessons’ adjustable features all become transactions on the processing rails — which is why premium data is summed streams, and why “development” of signed premium happens.' }
+      ]
     }
   ]
 });

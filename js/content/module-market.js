@@ -10,6 +10,62 @@ window.LMA_MODULES.push({
   badge: { icon: '🏛️', name: 'Room Regular', desc: 'Master “The London Market” module.' },
   lessons: [
     {
+      id: 'insurance-basics',
+      title: 'First principles: what insurance is, and the shapes it comes in',
+      minutes: 8,
+      body: `
+<p>Before the London market makes sense, the underlying machine must: what does insurance actually <em>do</em>, and why does it work?</p>
+<h3>Risk transfer and pooling</h3>
+<p>Insurance is a trade: the insured swaps an <strong>uncertain, potentially ruinous loss</strong> for a <strong>certain, affordable premium</strong>. The insurer can accept that trade because of <strong>pooling</strong>: across many similar, independent risks, outcomes that are wildly unpredictable one by one become statistically predictable in aggregate — the <strong>law of large numbers</strong>. If 10,000 similar homes each have a 1% annual chance of a £20,000 fire loss, no one knows <em>which</em> homes will burn, but the pool will suffer very close to 100 fires costing about £2m — so a premium of a few hundred pounds each, plus expenses and margin, funds the pool reliably.</p>
+<h3>Where London fits: when pooling isn’t enough</h3>
+<p>Pooling works beautifully for high-frequency, low-severity risks — motor, home. It strains for <strong>low-frequency, high-severity</strong> risks: there is no pool of 10,000 identical satellite launches or £600m refineries, and one loss can dwarf decades of premium. That is precisely the business that flows to London, which substitutes what pooling cannot provide: <strong>capital</strong> (the buffer for the unpooled volatility), <strong>subscription</strong> (many carriers sharing one risk), and <strong>specialist judgement</strong> (pricing without credible statistics). Keep this frame: everything in this course — capital requirements, reinsurance, exposure management — exists because London insures the risks the law of large numbers abandons.</p>
+<h3>The shapes insurance comes in</h3>
+<ul>
+<li><strong>First-party vs third-party</strong> — first-party cover pays the insured for its <em>own</em> losses (property damage, business interruption); third-party (liability) cover pays for harm the insured causes <em>others</em>. Many policies blend both (a cyber policy’s incident costs vs its privacy liability).</li>
+<li><strong>Insurance vs reinsurance</strong> — insurance protects the original insured; reinsurance protects insurers. Same principles, different customer — and London does both at scale.</li>
+<li><strong>Personal, commercial, specialty</strong> — personal lines (home, motor) barely feature in London; commercial and <strong>specialty</strong> (complex, large, unusual) business is its diet.</li>
+<li><strong>Short-tail vs long-tail</strong> — the time from premium to final claim payment: months-to-a-couple-of-years for property; potentially decades for liability. Tail length drives reserving, capital and investment strategy throughout this course.</li>
+</ul>
+<div class="example">
+<div class="ex-label">Worked example</div>
+<p>Pooling in numbers: 10,000 homes, each with a 1% chance of a £20,000 loss. Expected annual losses = 10,000 × 1% × £20,000 = <strong>£2m</strong>, so roughly £200 each of pure risk premium (before expenses and profit) funds the pool — and the actual outcome will reliably land close to expectation. Now try one £600m refinery with a 1% chance of destruction: expected loss £6m a year, but the actual outcome is either £0 or £600m. No pool smooths that — only <strong>capital</strong> standing behind the promise does. That single contrast is why the London market exists.</p>
+</div>
+<div class="keypoint">
+<div class="ex-label">Key point</div>
+<p>Insurance = <strong>certain premium for uncertain loss</strong>, made possible by pooling — and where pooling fails (rare, huge, unusual risks), London substitutes <strong>capital, subscription and judgement</strong>. Know the four dividing lines: first/third party, insurance/reinsurance, personal/specialty, short/long tail.</p>
+</div>`,
+      quiz: [
+        { type: 'num',
+          q: '8,000 similar warehouses each have a 2% annual probability of a £50,000 loss. What are the pool’s expected annual losses, in £ millions?',
+          answer: 8, tol: 0.1, unit: '£ millions',
+          explain: '8,000 × 2% × £50,000 = £8m — predictable in aggregate even though no one knows which warehouses will burn.' },
+        { type: 'num',
+          q: 'For that pool, what is the pure risk premium per warehouse (expected losses only, before expenses and profit), in £?',
+          answer: 1000, tol: 10, unit: '£',
+          explain: '£8m ÷ 8,000 = £1,000 each. Real premiums add acquisition costs, expenses, capital costs and margin on top.' },
+        { type: 'mc',
+          q: 'Why does the law of large numbers fail for a single £600m refinery?',
+          options: [
+            'Refineries are uninsurable',
+            'There is no large pool of independent, similar risks to average across — the outcome is essentially binary, so capital rather than pooling must absorb the volatility',
+            'The premium would be too small to matter',
+            'Statistics do not apply to industrial risks'
+          ],
+          answer: 1,
+          explain: 'Averaging needs many similar independent trials. One huge risk gives you one trial — which is why specialty insurance leans on capital, subscription and judgement instead.' },
+        { type: 'mc',
+          q: 'A cyber policy pays the insured’s own systems-recovery costs and also defends privacy claims from affected customers. How is it categorised?',
+          options: [
+            'Purely first-party',
+            'Purely third-party',
+            'A blend: first-party cover for the insured’s own losses plus third-party liability cover',
+            'Reinsurance'
+          ],
+          answer: 2,
+          explain: 'First-party = your own losses; third-party = your liability to others. Many modern specialty products package both — knowing which element responds to which loss is basic coverage analysis.' }
+      ]
+    },
+    {
       id: 'what-is-it',
       title: 'What the London market is (and is not)',
       minutes: 7,
@@ -228,6 +284,73 @@ window.LMA_MODULES.push({
           ],
           answer: 1,
           explain: 'The Market Reform Contract is the standardised successor to the paper slip — one document holding the risk details, terms, premium and each insurer’s participation.' }
+      ]
+    },
+    {
+      id: 'mrc-anatomy',
+      title: 'Inside the contract: Market Reform Contract sections, subjectivities and endorsements',
+      minutes: 9,
+      body: `
+<p>The placement lesson introduced the slip and its successor, the <strong>Market Reform Contract</strong>. Now open it up — because knowing where things live in the contract is daily working knowledge, and the document’s structure embodies a hard-won market reform.</p>
+<h3>Contract certainty: the reform behind the format</h3>
+<p>For centuries London bound cover on brief slips and argued the full wording out <em>afterwards</em> — sometimes months after inception, occasionally after the loss. Following regulatory pressure in the mid-2000s, the market adopted <strong>contract certainty</strong>: complete, unambiguous terms agreed <em>before</em> inception, evidenced promptly. The standardised Market Reform Contract is that principle in document form.</p>
+<h3>The sections and what lives in each</h3>
+<ul>
+<li><strong>Risk Details</strong> — the heart: insured, period, interest insured, limits and deductibles, territorial scope, conditions, exclusions, wordings and clauses (often incorporated by reference to standard market clauses), premium, and <strong>subjectivities</strong> (below).</li>
+<li><strong>Information</strong> — the underwriting information disclosed (surveys, schedules, loss records): the fair-presentation record.</li>
+<li><strong>Security Details</strong> — who is bound: each insurer’s stamp, written and signed lines — the subscription made concrete.</li>
+<li><strong>Subscription Agreement</strong> — the rules of engagement among subscribers: which changes need whose agreement, on what basis claims are agreed. Post-bind changes are governed by the <strong>General Underwriters Agreement</strong>, a market protocol classifying alterations: minor ones the slip leader can agree alone; significant ones need the agreement parties; fundamental ones, everyone.</li>
+<li><strong>Fiscal & Regulatory</strong> — tax and regulatory data: where the risk is located, which premium taxes apply, licensing classifications (foreshadowing the international-trading lesson in the Regulation module).</li>
+<li><strong>Broker Remuneration & Deductions</strong> — what the broker earns, disclosed.</li>
+</ul>
+<h3>Subjectivities: cover with homework attached</h3>
+<p>A <strong>subjectivity</strong> is a condition attached at binding: “subject to survey within 30 days”, “subject to completed proposal form”. Until satisfied, the contract’s status is genuinely conditional — and unresolved subjectivities are a classic source of dispute when a loss arrives first. Disciplined underwriting tracks them to resolution; disciplined broking clears them fast. Contract-certainty rules require subjectivities to state their consequence: what happens if unmet, by when.</p>
+<h3>Endorsements: the contract’s change log</h3>
+<p>Mid-term changes — an extra location, a higher limit, an extended period — are made by <strong>endorsement</strong>, agreed per the Subscription Agreement’s rules and processed so every subscriber’s records stay aligned. A policy’s true state at any moment is the original contract <em>plus its endorsement trail</em> — which is why claims teams read the endorsements first.</p>
+<div class="example">
+<div class="ex-label">Worked example</div>
+<p>A property placement binds with a subjectivity: “Subject to satisfactory survey of the Mumbai warehouse within 60 days, failing which cover for that location terminates.” Day 45: fire at the Mumbai warehouse; the survey never happened. The claim turns entirely on the subjectivity’s drafting: with the termination consequence spelled out and 60 days unexpired, cover was still live — the insurers pay, then argue about the broker’s diligence. Had the subjectivity been vague (“subject to survey”), the market would be litigating what the parties meant. One sentence of drafting; the whole claim.</p>
+</div>
+<div class="keypoint">
+<div class="ex-label">Key point</div>
+<p>The Market Reform Contract puts <strong>every term in a known place</strong> — risk details, information, security, subscription rules, fiscal data, remuneration — before inception. Watch the two live wires: <strong>subjectivities</strong> (cover with conditions attached) and <strong>endorsements</strong> (the change log that is part of the contract).</p>
+</div>`,
+      quiz: [
+        { type: 'mc',
+          q: 'What problem was the “contract certainty” reform designed to end?',
+          options: [
+            'Brokers charging undisclosed commissions',
+            'The practice of binding cover on brief slips and agreeing full wordings after inception — sometimes after losses had already occurred',
+            'Underwriters declining too many risks',
+            'Slow premium payment'
+          ],
+          answer: 1,
+          explain: '“Deal now, detail later” produced disputes whenever a loss arrived before the wording. Contract certainty requires complete terms agreed before inception — the Market Reform Contract is its instrument.' },
+        { type: 'mc',
+          q: 'In which section of the Market Reform Contract would you find each insurer’s signed line?',
+          options: ['Risk Details', 'Security Details', 'Fiscal & Regulatory', 'Information'],
+          answer: 1,
+          explain: 'Security Details records who is bound and for how much — the subscription itself. Risk Details holds the terms; Information holds the disclosure.' },
+        { type: 'mc',
+          q: 'What does the General Underwriters Agreement govern?',
+          options: [
+            'The premium rates underwriters may charge',
+            'How post-bind changes are agreed: which alterations the slip leader can approve alone, which need agreement parties, and which need every subscriber',
+            'The commission split between brokers',
+            'Claims payments above US$10m'
+          ],
+          answer: 1,
+          explain: 'The protocol classifies endorsements by significance so routine changes don’t require chasing fifteen signatures — subscription-market pragmatism, codified.' },
+        { type: 'mc',
+          q: 'Why do contract-certainty rules require a subjectivity to state its consequence and deadline?',
+          options: [
+            'To create work for lawyers',
+            'Because “subject to survey” with no consequence leaves the contract’s status genuinely uncertain if a loss occurs before resolution — precisely the ambiguity the reform exists to eliminate',
+            'Because subjectivities are otherwise free of charge',
+            'To let brokers cancel cover unilaterally'
+          ],
+          answer: 1,
+          explain: 'An open-ended subjectivity is a dispute in waiting. Stating what happens, and by when, keeps the conditional period defined — the worked example’s entire lesson.' }
       ]
     },
     {

@@ -140,6 +140,19 @@ window.LMA_GLOSSARY = [
   { term: 'Reinstatement cover (new-for-old)', def: 'Property cover paying replacement-as-new rather than depreciated value — a contracted, priced departure from strict indemnity.' },
   { term: 'Subrogation', def: 'The insurer’s right, after paying a claim, to step into the insured’s legal rights against the party who caused the loss — recoveries reduce net claims.' },
   { term: 'Terms of business agreement', def: 'The contract between broker and insurer governing their dealings: whose agent for which functions, client-money handling, remuneration.' },
-  { term: 'Waiver of subrogation', def: 'An insurer’s agreement not to pursue recovery against specified parties (e.g. project partners) — a priced concession common in construction and energy.' }
+  { term: 'Waiver of subrogation', def: 'An insurer’s agreement not to pursue recovery against specified parties (e.g. project partners) — a priced concession common in construction and energy.' },
+  { term: 'Condition precedent', def: 'A policy obligation whose breach can defeat the claim (or the policy) entirely, unlike ordinary conditions which merely sound in damages — the label drafters fight over.' },
+  { term: 'Contract certainty', def: 'The market reform requiring complete, unambiguous contract terms agreed before inception — embodied in the Market Reform Contract format.' },
+  { term: 'De-linking', def: 'Settling premium on its due date against the advice note even though final signing processing completes later — cash no longer waits for paperwork.' },
+  { term: 'Endorsement', def: 'A mid-term contract change (limits, locations, period) agreed under the subscription rules — a policy’s true state is the original contract plus its endorsement trail.' },
+  { term: 'Follow form', def: 'An excess layer incorporating the primary policy’s wording by reference so a layered tower responds on consistent terms.' },
+  { term: 'General Underwriters Agreement', def: 'The market protocol classifying post-bind changes by significance: which the slip leader may agree alone, which need agreement parties, which need all subscribers.' },
+  { term: 'Insurance premium tax', def: 'Tax levied on premium (not profit) by the risk’s territory, at widely varying rates — calculated, collected and remitted by insurer or broker, on defensibly allocated premium.' },
+  { term: 'Law of large numbers', def: 'The statistical principle making pooling work: across many similar independent risks, aggregate losses become predictable even though individual outcomes are not.' },
+  { term: 'Operative clause', def: 'The insuring clause — the policy’s core promise (“Insurers agree to indemnify…”) that every definition, condition and exclusion qualifies.' },
+  { term: 'Premium advice note', def: 'The transaction document (London Premium Advice Note) a broker submits to the bureau to move premium: contract, amount, shares, brokerage — checked before settlement.' },
+  { term: 'Settlement due date', def: 'The date premium must reach insurers, set by the placement’s terms of trade — the yardstick for broker settlement performance.' },
+  { term: 'Subjectivity', def: 'A condition attached when cover is bound (“subject to survey within 30 days”) — contract certainty requires its consequence and deadline to be stated.' },
+  { term: 'Surplus lines', def: 'The US channel for eligible non-admitted insurers to write risks the admitted market declines, via specially licensed brokers, with a state premium tax.' }
 ];
 window.LMA_GLOSSARY.sort(function (a, b) { return a.term.localeCompare(b.term); });

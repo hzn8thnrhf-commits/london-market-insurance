@@ -226,6 +226,72 @@ window.LMA_MODULES.push({
       ]
     },
     {
+      id: 'wording-anatomy',
+      title: 'Reading a wording: the anatomy of a policy',
+      minutes: 9,
+      body: `
+<p>The terms lesson covered <em>what</em> coverage design does; this one covers <em>where to find it</em>. Every policy wording, however exotic the class, is built from the same components — and once you know the skeleton, a 60-page wording becomes navigable in minutes.</p>
+<h3>The skeleton</h3>
+<ul>
+<li><strong>The operative (insuring) clause</strong> — the promise itself: “the Insurers agree to indemnify the Insured against…”. Everything else qualifies this sentence. Find it first: it defines the trigger (occurrence? claims-made? — the terms lesson) and the basic scope.</li>
+<li><strong>The schedule</strong> — the variables: named insured, period, limits, deductibles, premium. The wording is the engine; the schedule is the dashboard settings. In a dispute, specifically negotiated schedule entries generally prevail over standard printed text — the parties’ actual bargain outranks the boilerplate.</li>
+<li><strong>Definitions</strong> — capitalised terms with assigned meanings. Never assume a defined term means what it means in English: “Occurrence”, “Event”, “Insured” do exactly what their definitions say, no more. Half of coverage analysis is chasing definitions.</li>
+<li><strong>Conditions</strong> — obligations and machinery: notification of claims, premium payment, cooperation, cancellation. Some are <strong>conditions precedent</strong> (to liability or to a claim): non-compliance can defeat the claim; ordinary conditions merely sound in damages. The label matters enormously and drafters fight over it.</li>
+<li><strong>Warranties</strong> — strict promises (the terms lesson; softened by the 2015 Act to suspend rather than void cover).</li>
+<li><strong>Exclusions</strong> — the carve-outs, read with their causation language (“directly or indirectly” — the proximate-cause lesson in Principles & the Law).</li>
+<li><strong>Extensions and endorsements</strong> — bolted-on broadenings and the mid-term change log (the Market Reform Contract lesson).</li>
+</ul>
+<h3>Standard clauses, manuscript wordings and layers</h3>
+<p>Most London wordings assemble <strong>standard market clauses</strong> — model texts maintained by the Lloyd’s Market Association and others, referenced by code on the slip — with bespoke (“manuscript”) drafting for the deal’s particulars. Standard clauses carry decades of interpretation; manuscript text carries none, which is both its power and its danger. And in layered programmes, excess layers commonly incorporate the primary wording by reference — <strong>“follow form”</strong> — so the tower responds consistently; any deliberate difference in an excess layer’s terms is a trap for whoever misses it.</p>
+<h3>A reading protocol</h3>
+<p>Experienced practitioners read in this order: <strong>schedule → operative clause → definitions of the operative clause’s terms → exclusions → conditions precedent</strong>. That sequence answers “what is promised, to whom, minus what, subject to what homework” — which is the whole contract — before wading through machinery.</p>
+<div class="example">
+<div class="ex-label">Worked example</div>
+<p>A claim arrives on a professional indemnity wording: the insured notified a claim four months after receiving it. The operative clause covers “Claims first made during the Period” — satisfied. But the notification clause requires notice “as soon as practicable” and is labelled a <strong>condition precedent to liability</strong>. Four months, unexplained, likely breaches it — and because it is a condition precedent, the insurer may decline outright rather than merely complain. Same facts under an ordinary condition: the claim survives, less any damages for prejudice. The entire outcome pivots on three words of labelling in the conditions section — which is exactly why you read the skeleton, not just the story.</p>
+</div>
+<div class="keypoint">
+<div class="ex-label">Key point</div>
+<p>Every wording = <strong>operative clause + schedule + definitions + conditions (precedent or not) + warranties + exclusions + endorsements</strong>. Read schedule-first, chase the defined terms, respect “condition precedent” labels — and in towers, verify the excess layers truly follow form.</p>
+</div>`,
+      quiz: [
+        { type: 'mc',
+          q: 'Which part of a policy contains the core promise that everything else qualifies?',
+          options: ['The schedule', 'The operative (insuring) clause', 'The conditions', 'The endorsements'],
+          answer: 1,
+          explain: 'The operative clause is the engine — “Insurers agree to indemnify…”. Trigger, scope and parties flow from it; definitions, conditions and exclusions all modify it.' },
+        { type: 'mc',
+          q: 'Why does the “condition precedent” label matter so much?',
+          options: [
+            'It is purely decorative',
+            'Breach of a condition precedent can defeat the claim entirely, while breach of an ordinary condition typically only sounds in damages for any prejudice caused',
+            'Conditions precedent apply only before inception',
+            'It doubles the premium'
+          ],
+          answer: 1,
+          explain: 'The label converts an obligation into a gateway. The worked example’s late notification shows the same facts producing declinature or payment depending on three words.' },
+        { type: 'mc',
+          q: 'What does a “follow form” excess layer do?',
+          options: [
+            'Follows the primary insurer’s claims decisions automatically',
+            'Incorporates the primary policy’s wording by reference so the tower responds on consistent terms, subject to any stated differences',
+            'Copies the premium of the layer below',
+            'Renews automatically with the primary'
+          ],
+          answer: 1,
+          explain: 'Follow form keeps a layered tower coherent. The dangerous exceptions are deliberate divergences buried in an excess layer — found only by actually comparing the wordings.' },
+        { type: 'mc',
+          q: 'In interpretation disputes, why do specifically negotiated schedule entries generally beat standard printed wording?',
+          options: [
+            'Schedules are signed in ink',
+            'Because they evidence the parties’ actual, specific bargain, which courts prefer over boilerplate the parties may never have focused on',
+            'Because schedules are filed with regulators',
+            'They don’t — printed wording always prevails'
+          ],
+          answer: 1,
+          explain: 'The specially-agreed outranks the standard: interpretation seeks the parties’ real intent, and the deal-specific entries are its best evidence.' }
+      ]
+    },
+    {
       id: 'cycle',
       title: 'The underwriting cycle: hard markets, soft markets',
       minutes: 8,

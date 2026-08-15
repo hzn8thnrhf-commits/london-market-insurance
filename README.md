@@ -4,7 +4,7 @@ An installable, offline-capable web app that teaches how the **London insurance 
 
 ## What's inside
 
-**14 modules · 70 lessons · ~290 quiz questions (numeric + qualitative) · 32 achievements · 130+ term glossary — plus a Connections map, inline diagrams and a built-in quiz calculator**
+**15 modules · 80 lessons · ~325 quiz questions (numeric + qualitative) · 40+ achievements · 155 term glossary — plus a Connections map, inline diagrams and a built-in quiz calculator**
 
 | # | Module | Covers |
 |---|--------|--------|

@@ -79,6 +79,69 @@ window.LMA_MODULES.push({
       ]
     },
     {
+      id: 'international',
+      title: 'Trading the world: licences, surplus lines and premium taxes',
+      minutes: 9,
+      body: `
+<p>A London policy on a Chilean mine or a Texan warehouse is a cross-border financial transaction — and every territory has rules about who may insure its risks and what tax the premium owes. This machinery, largely invisible until it goes wrong, is core London market practice.</p>
+<h3>The starting rule: risks need licensed insurers</h3>
+<p>Most countries require insurance of local risks to be written by an insurer <strong>licensed (admitted)</strong> there — consumer protection logic: a local regulator, local rules, someone to sue at home. Writing without a licence (“non-admitted”) ranges from freely permitted, through permitted-with-conditions, to criminal, territory by territory (the Global Programmes lesson met this map from the buyer’s side). So the first question on any risk is: <strong>where is it located, and may we write it from London?</strong> — which is exactly what the Market Reform Contract’s Fiscal & Regulatory section documents.</p>
+<h3>Lloyd’s answer: the licence network</h3>
+<p>A core part of what Lloyd’s sells its market is <strong>licences in bulk</strong>: authorisations to write business across 200+ territories, maintained centrally, with local representatives and deposits where required — so a new syndicate trades globally from day one. Post-Brexit, European risks are served through a Lloyd’s subsidiary insurer in Brussels rather than the old passporting rights: a structural workaround worth knowing because it shows how licensing shapes corporate structure.</p>
+<h3>The United States: surplus lines and reinsurance trusts</h3>
+<p>The market’s biggest territory has its own two doors:</p>
+<ul>
+<li><strong>Direct insurance</strong> mostly enters as <strong>surplus lines</strong>: US states permit “eligible” non-admitted insurers (Lloyd’s prominent among them) to write risks the admitted market declines, placed through specially licensed surplus lines brokers, historically after a “diligent search” of the admitted market, with a state surplus lines tax on the premium.</li>
+<li><strong>Reinsurance</strong> of US insurers is supported by <strong>credit-for-reinsurance</strong> rules: for a US cedant to take balance-sheet credit for its recoveries, the overseas reinsurer historically had to collateralise via US trust funds — the ring-fenced American trust funds mentioned in the Premium module. Reforms (reciprocal-jurisdiction status) have eased this for well-regulated markets, but the trust-fund architecture still shapes how Lloyd’s holds assets.</li>
+</ul>
+<h3>Premium taxes: the state’s slice</h3>
+<p><strong>Insurance premium taxes</strong> are levied on premium (not profit) by the risk’s territory — rates and rules varying wildly by country, state and class. The insurer or broker typically must calculate, collect and remit them; on multi-country programmes the premium must first be <strong>allocated</strong> across territories so each gets its lawful slice. Misallocation is not an accounting quibble — it is unpaid tax in someone’s jurisdiction, with penalties and reputational consequences. This is why the Fiscal & Regulatory section exists, why global programmes agonise over allocation, and why “where is the risk?” is a tax question as much as a licensing one.</p>
+<div class="example">
+<div class="ex-label">Worked example</div>
+<p>A programme covers property in three countries: 60% of the exposure in country A (premium tax 5%), 30% in country B (tax 10%), 10% in country C (no premium tax). Premium £2m, allocated by exposure. Tax: A: £1.2m × 5% = £60,000; B: £0.6m × 10% = £60,000; C: nil — <strong>£120,000</strong> total, collected on top of (or out of) the premium and remitted territory by territory. Now shade the allocation toward tax-free C to “save” tax, and you have not optimised — you have under-declared in A and B. Allocation must follow the genuine distribution of risk, documented and defensible.</p>
+</div>
+<div class="keypoint">
+<div class="ex-label">Key point</div>
+<p>Every risk has a location; the location determines <strong>licence</strong> (admitted, surplus lines, or via the Lloyd’s network) and <strong>tax</strong> (premium taxes, correctly allocated and remitted). The Fiscal & Regulatory section of the contract is where this due diligence lives — and getting it wrong is a compliance event, not a rounding error.</p>
+</div>`,
+      quiz: [
+        { type: 'num',
+          q: 'A £3m programme allocates 50% of exposure to a country with 6% premium tax, 25% to one with 12%, and 25% to one with no tax. What is the total premium tax, in £?',
+          answer: 180000, tol: 2000, unit: '£',
+          explain: '£1.5m × 6% = £90,000 plus £0.75m × 12% = £90,000 plus nil = £180,000 — computed territory by territory on the allocated premium.' },
+        { type: 'mc',
+          q: 'Through which mechanism does most direct (non-reinsurance) London market business enter the United States?',
+          options: [
+            'Ordinary admitted licences in every state',
+            'Surplus lines: eligible non-admitted insurers writing risks the admitted market declines, via specially licensed surplus lines brokers, with a state premium tax',
+            'A federal insurance licence',
+            'It cannot — the US is closed to London insurers'
+          ],
+          answer: 1,
+          explain: 'Surplus lines is the deliberate US channel for hard-to-place risks — eligibility lists, specialist brokers, diligent-search traditions and its own tax.' },
+        { type: 'mc',
+          q: 'Why were US trust funds historically required of overseas reinsurers like Lloyd’s?',
+          options: [
+            'To pay US federal income tax',
+            'Credit for reinsurance: US cedants could only count recoveries from a collateralised reinsurer, so assets had to sit ring-fenced in the US',
+            'To fund the Central Fund',
+            'To pay surplus lines brokers'
+          ],
+          answer: 1,
+          explain: 'The collateral protected US cedants and their policyholders from overseas non-payment. Reciprocal-jurisdiction reforms have eased the requirement, but the trust architecture persists.' },
+        { type: 'mc',
+          q: 'Why is deliberately shading a programme’s premium allocation toward low-tax territories dangerous rather than clever?',
+          options: [
+            'It increases brokerage',
+            'Allocation must reflect the genuine distribution of risk: shading it under-declares premium — and tax — in the higher-tax territories, a compliance breach with penalties',
+            'Because premium taxes are voluntary',
+            'It voids the reinsurance'
+          ],
+          answer: 1,
+          explain: 'Premium tax follows the risk’s real location. Artificial allocation is under-payment of someone’s tax, not optimisation — the reason allocation methodologies are documented and defensible.' }
+      ]
+    },
+    {
       id: 'yoa-ritc',
       title: 'Three-year accounting and reinsurance to close',
       minutes: 9,
