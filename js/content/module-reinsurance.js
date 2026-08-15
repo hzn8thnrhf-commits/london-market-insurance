@@ -5,6 +5,7 @@ window.LMA_MODULES.push({
   icon: '🛡️',
   title: 'Outwards Reinsurance',
   tagline: 'Insurance for insurers: protecting the book you wrote',
+  cii: 'LM2 · LM3',
   blurb: 'Quota share, surplus, excess of loss, stop loss — how insurers buy their own protection, structure programmes, and account for recoveries and reinsurer credit risk.',
   badge: { icon: '🛡️', name: 'Programme Architect', desc: 'Master the “Outwards Reinsurance” module.' },
   lessons: [

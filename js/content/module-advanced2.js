@@ -5,6 +5,7 @@ window.LMA_MODULES.push({
   icon: '📊',
   title: 'Advanced Practitioner II: Models & Portfolios',
   tagline: 'View of risk, cat pricing, reserve ranges and running a book',
+  cii: 'Beyond LM3',
   blurb: 'The second advanced set: building a house view of catastrophe risk, pricing catastrophe layers from the curve, quantifying reserve uncertainty, the syndicate planning year, portfolio management information, and global programmes with captives.',
   badge: { icon: '📊', name: 'Portfolio Practitioner', desc: 'Master “Advanced Practitioner II: Models & Portfolios”.' },
   lessons: [

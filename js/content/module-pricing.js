@@ -5,6 +5,7 @@ window.LMA_MODULES.push({
   icon: '⚖️',
   title: 'Pricing & Underwriting',
   tagline: 'Ratios, rates and the craft of selecting risk',
+  cii: 'LM3',
   blurb: 'How underwriters decide what to write and what to charge — loss ratios, combined ratios, rate on line, experience versus exposure rating, and the market cycle.',
   badge: { icon: '⚖️', name: 'Rate Setter', desc: 'Master the “Pricing & Underwriting” module.' },
   lessons: [

@@ -5,6 +5,7 @@ window.LMA_MODULES.push({
   icon: '🌪️',
   title: 'Exposure Management',
   tagline: 'Knowing what could hit you before it does',
+  cii: 'LM3',
   blurb: 'Aggregation, catastrophe models, exceedance-probability curves, Lloyd’s realistic disaster scenarios, and the discipline of monitoring what the portfolio could lose.',
   badge: { icon: '🌪️', name: 'Aggregation Hawk', desc: 'Master the “Exposure Management” module.' },
   lessons: [

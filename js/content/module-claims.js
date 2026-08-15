@@ -5,6 +5,7 @@ window.LMA_MODULES.push({
   icon: '📋',
   title: 'Claims & Reserving',
   tagline: 'Paying the promises — and estimating the ones still coming',
+  cii: 'LM2',
   blurb: 'The London market claims process, case reserves and incurred-but-not-reported, development triangles, the chain ladder, and why reserving is the market’s biggest single judgement.',
   badge: { icon: '📋', name: 'Reserve Master', desc: 'Master the “Claims & Reserving” module.' },
   lessons: [

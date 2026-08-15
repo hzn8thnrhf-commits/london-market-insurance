@@ -556,6 +556,13 @@ p { line-height: 1.55; }
 .gopt.wide { display: block; width: 100%; margin-bottom: 8px; text-align: left; }
 .gopt.active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
 
+.cii-pill {
+  display: inline-block; font-size: 0.64rem; font-weight: 800; letter-spacing: 0.04em;
+  color: var(--gold); background: var(--amber-soft);
+  border: 1px solid color-mix(in srgb, var(--gold) 35%, transparent);
+  border-radius: 10px; padding: 1px 7px; vertical-align: 1px; white-space: nowrap;
+}
+
 /* Categorical palette for portfolio charts — validated for both surfaces
    (fixed class→slot mapping; never re-ordered, never cycled) */
 :root {

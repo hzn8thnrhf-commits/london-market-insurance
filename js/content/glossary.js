@@ -131,6 +131,15 @@ window.LMA_GLOSSARY = [
   { term: 'Leveraged inflation', def: 'The amplification of claims-severity trend in excess layers: modest ground-up inflation pushes disproportionately more losses over high attachment points.' },
   { term: 'Sliding-scale commission', def: 'A proportional-treaty ceding commission that moves inversely with the loss ratio between a floor and cap, sharing outcome risk between cedant and reinsurer.' },
   { term: 'Swing-rated premium', def: 'An excess-of-loss premium adjusted within a minimum–maximum corridor based on actual losses — the insured self-finances losses inside the corridor, with true risk transfer beyond it.' },
-  { term: 'Tail factor', def: 'The assumption extending claims development beyond the oldest age observed in a triangle — small changes move long-tail reserves materially.' }
+  { term: 'Tail factor', def: 'The assumption extending claims development beyond the oldest age observed in a triangle — small changes move long-tail reserves materially.' },
+  { term: 'Agency (law of)', def: 'The legal framework under which one party (agent) binds another (principal): brokers act for insureds, coverholders for insurers, managing agents for members.' },
+  { term: 'Apparent authority', def: 'Agency doctrine binding a principal where it held an agent out as authorised, even if internal limits were exceeded — why binding-authority controls matter legally.' },
+  { term: 'Contribution', def: 'The doctrine letting an insurer that paid a loss recover rateable shares from other insurers covering the same interest and peril — so the insured recovers exactly once.' },
+  { term: 'Insurable interest', def: 'The legal stake in the subject matter (ownership, custody, liability, expectation) required for a valid policy — separating insurance from wagering.' },
+  { term: 'Proximate cause', def: 'The dominant, efficient cause of a loss — the peril the policy responds to when events arrive in chains; an excluded concurrent cause defeats cover by default.' },
+  { term: 'Reinstatement cover (new-for-old)', def: 'Property cover paying replacement-as-new rather than depreciated value — a contracted, priced departure from strict indemnity.' },
+  { term: 'Subrogation', def: 'The insurer’s right, after paying a claim, to step into the insured’s legal rights against the party who caused the loss — recoveries reduce net claims.' },
+  { term: 'Terms of business agreement', def: 'The contract between broker and insurer governing their dealings: whose agent for which functions, client-money handling, remuneration.' },
+  { term: 'Waiver of subrogation', def: 'An insurer’s agreement not to pursue recovery against specified parties (e.g. project partners) — a priced concession common in construction and energy.' }
 ];
 window.LMA_GLOSSARY.sort(function (a, b) { return a.term.localeCompare(b.term); });

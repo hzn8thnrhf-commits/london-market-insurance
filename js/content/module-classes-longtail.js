@@ -5,6 +5,7 @@ window.LMA_MODULES.push({
   icon: '⚖️',
   title: 'Classes II: Casualty, Financial Lines & Specialty',
   tagline: 'The long-tail and specialty classes and their idiosyncrasies',
+  cii: 'LM1 · LM3',
   blurb: 'Liability in its many forms — general casualty, professional and financial lines, cyber — plus political risk, credit, and the accident, health and contingency world.',
   badge: { icon: '🦉', name: 'Specialty Sage', desc: 'Master “Classes II: Casualty, Financial Lines & Specialty”.' },
   lessons: [

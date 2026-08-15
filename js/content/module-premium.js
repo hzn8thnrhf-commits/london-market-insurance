@@ -5,6 +5,7 @@ window.LMA_MODULES.push({
   icon: '💷',
   title: 'Premium: From Gross to Net',
   tagline: 'The lifeblood of the market — measured five different ways',
+  cii: 'LM2',
   blurb: 'Written, signed, earned, gross, net: premium wears many hats. This module builds the full waterfall from the client’s cheque to the insurer’s profit line.',
   badge: { icon: '💷', name: 'Premium Pro', desc: 'Master the “Premium” module.' },
   lessons: [

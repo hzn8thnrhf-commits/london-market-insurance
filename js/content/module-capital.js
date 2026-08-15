@@ -5,6 +5,7 @@ window.LMA_MODULES.push({
   icon: '🏦',
   title: 'Capital & Solvency',
   tagline: 'Why insurers hold capital, and how much is enough',
+  cii: 'LM2 · LM3',
   blurb: 'The one-in-200 standard, Solvency UK, internal models, Lloyd’s member capital-setting, diversification, and how capital feeds back into pricing.',
   badge: { icon: '🏦', name: 'Capital Custodian', desc: 'Master the “Capital & Solvency” module.' },
   lessons: [

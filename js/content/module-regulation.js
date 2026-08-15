@@ -5,6 +5,7 @@ window.LMA_MODULES.push({
   icon: '🏰',
   title: 'Regulation, Accounting & The Big Picture',
   tagline: 'Who watches the market, how results are measured, and how it all connects',
+  cii: 'LM1 · LM2',
   blurb: 'The regulators and their remits, the Lloyd’s three-year accounting tradition and reinsurance to close, modern reporting, conduct and financial crime — and a capstone that follows one risk through everything you have learned.',
   badge: { icon: '🏰', name: 'Market Guardian', desc: 'Master “Regulation, Accounting & The Big Picture”.' },
   lessons: [

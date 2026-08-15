@@ -5,6 +5,7 @@ window.LMA_MODULES.push({
   icon: '🧠',
   title: 'Advanced Practitioner',
   tagline: 'The techniques behind the techniques',
+  cii: 'Beyond LM3',
   blurb: 'A step up in technicality: pricing layers with exposure curves, loss-sensitive contract features, capital allocation methods, reserving diagnostics, the legal machinery of the contract, and the investment economics of float. Best tackled after the core modules.',
   badge: { icon: '🧠', name: 'Advanced Practitioner', desc: 'Master the “Advanced Practitioner” module.' },
   lessons: [

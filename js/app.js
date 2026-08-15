@@ -379,14 +379,16 @@
     return '<div class="card tappable" data-go="#/module/' + m.id + '">' +
       '<div class="row"><div class="mod-icon">' + m.icon + '</div>' +
       '<div class="grow"><div class="mod-title">' + esc(m.title) + '</div>' +
-      '<div class="mod-meta">' + p.total + ' lessons · ' + esc(m.tagline) + '</div>' +
+      '<div class="mod-meta">' + p.total + ' lessons · ' + esc(m.tagline) +
+      (m.cii ? ' · <span class="cii-pill">' + esc(m.cii) + '</span>' : '') + '</div>' +
       '<div class="progress-track"><div class="progress-fill' + (p.done ? ' done' : '') + '" style="width:' + pct + '%"></div></div>' +
       '</div><div class="chev">›</div></div></div>';
   }
 
   function renderModules() {
     setTab('#/modules');
-    var html = '<h1>Modules</h1><p class="sub">Work through them in order, or jump to what you need. Each lesson ends with a short quiz — score 70% or more to pass.</p>';
+    var html = '<h1>Modules</h1><p class="sub">Work through them in order, or jump to what you need. Each lesson ends with a short quiz — score 70% or more to pass.</p>' +
+      '<div class="d-caption" style="margin:-6px 2px 14px">Tags show alignment with the syllabus areas of the Chartered Insurance Institute’s London market qualifications — <strong>LM1</strong> (market essentials), <strong>LM2</strong> (principles &amp; practices), <strong>LM3</strong> (underwriting). All content here is original; the CII’s own study texts remain the authoritative exam preparation.</div>';
     MODULES.forEach(function (m) { html += moduleTile(m); });
     app().innerHTML = html;
     bindGoLinks();
@@ -405,7 +407,8 @@
     var avg = scores.length ? Math.round(sum / scores.length) : null;
     var html = '<button class="backlink" data-go="#/modules">‹ Modules</button>' +
       '<h1>' + m.icon + ' ' + esc(m.title) + '</h1>' +
-      '<p class="sub">' + esc(m.blurb || m.tagline) + '</p>' +
+      '<p class="sub">' + esc(m.blurb || m.tagline) +
+      (m.cii ? ' <span class="cii-pill">CII syllabus: ' + esc(m.cii) + '</span>' : '') + '</p>' +
       '<div class="mod-summary">' +
       '<div class="ms"><b>' + p.read + '/' + p.total + '</b><span>Read</span></div>' +
       '<div class="ms"><b>' + p.quizzed + '/' + p.total + '</b><span>Passed</span></div>' +

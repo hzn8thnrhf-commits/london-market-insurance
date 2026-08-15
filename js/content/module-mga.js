@@ -5,6 +5,7 @@ window.LMA_MODULES.push({
   icon: '🤝',
   title: 'Pens & Paper: The Underwriter–Capital Split',
   tagline: 'Managing general underwriters, fronting, platforms and alternative capital',
+  cii: 'LM2 · LM3',
   blurb: 'The modern market increasingly separates the people who underwrite from the balance sheets that carry the risk. This module covers how — managing general underwriters, fronting arrangements, incubator platforms, insurance-linked securities — and the lead-versus-follow economics underneath it all.',
   badge: { icon: '🤝', name: 'Structure Strategist', desc: 'Master “Pens & Paper: The Underwriter–Capital Split”.' },
   lessons: [

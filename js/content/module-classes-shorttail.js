@@ -5,6 +5,7 @@ window.LMA_MODULES.push({
   icon: '🚢',
   title: 'Classes I: Property, Marine, Energy & Aviation',
   tagline: 'The shorter-tail classes and their idiosyncrasies',
+  cii: 'LM1 · LM3',
   blurb: 'What each major shorter-tail class actually covers, how it is priced and structured, and the quirks — general average, control of well, vertical placements — that make each one its own world.',
   badge: { icon: '🚢', name: 'Class Connoisseur', desc: 'Master “Classes I: Property, Marine, Energy & Aviation”.' },
   lessons: [

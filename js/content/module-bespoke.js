@@ -5,6 +5,7 @@ window.LMA_MODULES.push({
   icon: '🧩',
   title: 'Bespoke & Structured Risk Solutions',
   tagline: 'One-off deals, credit enhancement and retrospective covers',
+  cii: 'Beyond LM3',
   blurb: 'Beyond the standard classes lies deal-driven underwriting: bespoke covers with no rating model, credit enhancement for banks, transactional liability for dealmakers, and retrospective covers that trade in old liabilities. This is where specialty underwriting meets investment banking.',
   badge: { icon: '🧩', name: 'Deal Maker', desc: 'Master “Bespoke & Structured Risk Solutions”.' },
   lessons: [

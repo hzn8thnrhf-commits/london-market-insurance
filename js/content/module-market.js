@@ -5,6 +5,7 @@ window.LMA_MODULES.push({
   icon: '🏛️',
   title: 'The London Market',
   tagline: 'How the world’s specialist insurance marketplace works',
+  cii: 'LM1 · LM2',
   blurb: 'Who the players are — Lloyd’s, syndicates, company market insurers, brokers, coverholders — and how a risk actually gets placed, signed and settled.',
   badge: { icon: '🏛️', name: 'Room Regular', desc: 'Master “The London Market” module.' },
   lessons: [
