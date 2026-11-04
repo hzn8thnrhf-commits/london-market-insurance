@@ -1,5 +1,5 @@
 /* The Slip — offline support. Bump VERSION whenever app files change. */
-const VERSION = "the-slip-v1";
+const VERSION = "the-slip-v2";
 const SHELL = [
   "./",
   "index.html",

@@ -121,6 +121,10 @@
     </div></header>`;
   }
 
+  const spread = (left, right, cover = false) =>
+    `<div class="spread"><div class="page page-l${cover ? " cover" : ""}">${left}</div><div class="page page-r">${right}</div></div>`;
+  const LETTERS = [...new Set(GLOSSARY.map((g) => g.term[0].toUpperCase()))];
+
   function resolve(h) {
     let m;
     if (h === "learn") return { tab: "learn", html: viewLearn };
@@ -215,7 +219,7 @@
       </div>`;
     }
 
-    return `${mast({
+    return spread(`${mast({
       kicker: "London Market insurance",
       title: "The Slip",
       sub: "A pocket course in how the world’s specialist insurance market works.",
@@ -233,7 +237,7 @@
         <div class="linebar"><div class="track"><span style="width:${line}%"></span></div><b>${done}/${total}</b></div>
         <p class="slip-caption">In London, a risk is written on a slip and each underwriter stamps their share. This slip is your course: learn every lesson in a module and its box gets stamped.</p>
       </section>
-
+    </div>`, `<div class="wrap stack">
       <section class="section"><h2 class="section-title">Up next</h2>${nextHTML}</section>
 
       <section class="section"><h2 class="section-title">Your record</h2>
@@ -264,7 +268,7 @@
         <p>The Slip is a learning aid, not legal or professional advice. Market practice and rules change, so check current sources before relying on a detail at work.</p>
         <button class="btn danger block" type="button" data-act="reset">Reset progress</button>
       </section>
-    </div>`;
+    </div>`);
   }
 
   /* ---------------------------------------------------------------- learn */
@@ -283,12 +287,11 @@
         </span>${chev}
       </a>`;
     }).join("");
-    return `${mast({
+    return spread(`${mast({
       kicker: `${MODULES.length} modules · ${LESSONS.length} lessons`,
       title: "Learn",
       sub: "The course runs from the basics to today’s market. Go in order, or jump to what you need."
-    })}
-    <div class="wrap stack"><div class="group">${rows}</div></div>`;
+    })}`, `<div class="wrap stack"><div class="group">${rows}</div></div>`, true);
   }
 
   function viewModule(m) {
@@ -302,14 +305,14 @@
         <span class="row-main"><span class="row-title">${esc(l.title)}</span><span class="row-meta">${l.minutes} min read${done ? " · learned" : ""}</span></span>${chev}
       </a>`;
     }).join("");
-    return `${mast({
+    return spread(`${mast({
       back: "learn",
       backLabel: "Learn",
       kicker: `Module ${m.code} · ${m.lessons.length} lessons · ${mins} min`,
       title: esc(m.title),
-      sub: esc(m.blurb)
-    })}
-    <div class="wrap stack">
+      sub: esc(m.blurb),
+      extra: `<span class="cover-mark spread-only" aria-hidden="true">${m.code}</span>`
+    })}`, `<div class="wrap stack">
       <section class="section"><h2 class="section-title">Lessons</h2><div class="group">${rows}</div></section>
       <section class="section"><h2 class="section-title">Check yourself</h2>
         <div class="group"><a class="row" href="#quiz-${m.id}" style="--sep:70px">
@@ -319,7 +322,7 @@
         </a></div>
       </section>
       ${nextMod ? `<section class="section"><h2 class="section-title">Next module</h2><div class="group"><a class="row" href="#${nextMod.id}" style="--sep:70px"><span class="code-badge">${nextMod.code}</span><span class="row-main"><span class="row-title">${esc(nextMod.title)}</span><span class="row-sub">${esc(nextMod.blurb)}</span></span>${chev}</a></div></section>` : ""}
-    </div>`;
+    </div>`, true);
   }
 
   /* ---------------------------------------------------------------- lesson */
@@ -371,16 +374,19 @@
     const m = l.module;
     const prev = LESSONS[l.order - 1];
     const next = LESSONS[l.order + 1];
+    const outline = `<nav class="wrap outline spread-only" aria-label="Lessons in this module">
+      <h2 class="section-title">In this module</h2>
+      <div class="group">${m.lessons.map((x) => `<a class="row" href="#${x.id}" style="--sep:56px"${x === l ? ' aria-current="page"' : ""}><span class="check${S.done[x.id] ? " done" : ""}">${S.done[x.id] ? icon("check") : x.num}</span><span class="row-main"><span class="row-title">${esc(x.title)}</span><span class="row-meta">${x.minutes} min</span></span></a>`).join("")}<a class="row" href="#quiz-${m.id}" style="--sep:56px"><span class="check">Q</span><span class="row-main"><span class="row-title">Module quiz</span><span class="row-meta">${m.quiz.length} questions</span></span></a></div>
+    </nav>`;
     return `<div class="readbar" id="readbar" aria-hidden="true"></div>
-    ${mast({
+    ${spread(`${mast({
       back: m.id,
       backLabel: `Module ${m.code}`,
       kicker: `${esc(m.title)} · Lesson ${l.num} of ${m.lessons.length}`,
       title: esc(l.title),
       sub: `${l.minutes} minute read`,
       extra: `<div class="mast-progress"><span style="width:${(l.num / m.lessons.length) * 100}%"></span></div>`
-    })}
-    <article class="wrap">
+    })}${outline}`, `<article class="wrap">
       <div class="prose">${l.body.map(block).join("")}</div>
       <div class="stack">
         <section class="takeaways"><h3>Key takeaways</h3><ul>${l.takeaways.map((t) => `<li>${icon("check")}<span>${fmt(t)}</span></li>`).join("")}</ul></section>
@@ -390,7 +396,7 @@
           ${next ? `<a class="next-link" href="#${next.id}"><small>Next lesson</small><span>${esc(next.title)}</span></a>` : ""}
         </nav>
       </div>
-    </article>`;
+    </article>`)}`;
   }
 
   let readTick = false;
@@ -446,15 +452,16 @@
           <p class="ra">${esc(it.q.why)}</p>
         </div>`;
       }).join("");
-      return `${mast({ back, backLabel, kicker: "Result", title, extra: pips })}
+      return spread(`${mast({ back, backLabel, kicker: "Result", title, extra: pips })}
       <div class="wrap stack">
         <div class="score">
           <div><b>${score}/${n}</b><small>${passed ? (quick ? "Passed. Your slip’s final box is signed." : "Passed. Pass mark is 80%.") : "Pass mark is 80%. Read the explanations below, then try again."}</small></div>
           ${passed ? `<span class="stamp big animate"><strong>Passed</strong><span>${fmtDate(Date.now())}</span></span>` : ""}
         </div>
         <div class="btn-row"><button class="btn" type="button" data-act="retry">${quick ? "New questions" : "Try again"}</button><a class="btn quiet" href="#${back}">Done</a></div>
+      </div>`, `<div class="wrap stack">
         <section class="section"><h2 class="section-title">Review your answers</h2><div class="group">${review}</div></section>
-      </div>`;
+      </div>`);
     }
 
     const it = r.items[r.i];
@@ -472,13 +479,14 @@
       ? `<div class="feedback" id="fb">${it.opts[it.pick].ok ? '<b class="good">Correct</b>' : '<b class="bad">Not quite</b>'}<p>${esc(it.q.why)}</p></div>
          <button class="btn block" type="button" data-act="nextq">${r.i + 1 < r.items.length ? "Next question" : "See your result"}</button>`
       : "";
-    return `${mast({ back, backLabel, kicker: `Question ${r.i + 1} of ${r.items.length}`, title, extra: pips })}
+    return spread(`${mast({ back, backLabel, kicker: `Question ${r.i + 1} of ${r.items.length}`, title, extra: pips })}
     <div class="wrap stack">
       ${quick ? `<p class="q-from">Module ${it.q.m.code} · ${esc(it.q.m.title)}</p>` : ""}
       <h2 class="q-text">${esc(it.q.q)}</h2>
+    </div>`, `<div class="wrap stack">
       <div class="opts">${opts}</div>
       ${fb}
-    </div>`;
+    </div>`);
   }
 
   function finishQuiz() {
@@ -518,7 +526,7 @@
         ${q ? `<span class="chip${passed ? " good" : ""}">${q.best}/${q.total}</span>` : ""}${chev}
       </a>`;
     }).join("");
-    return `${mast({ kicker: "Quizzes and flashcards", title: "Practice", sub: "Test what you’ve read, then keep it fresh." })}
+    return spread(`${mast({ kicker: "Quizzes and flashcards", title: "Practice", sub: "Test what you’ve read, then keep it fresh." })}
     <div class="wrap stack">
       <section class="section"><h2 class="section-title">Quick-fire</h2>
         <div class="panel">
@@ -537,8 +545,9 @@
         <a class="btn block" href="#cards">Study 12 cards</a>
         <p class="section-foot">Cards you miss come back sooner. A card is mastered after three correct answers in a row.</p>
       </section>
+    </div>`, `<div class="wrap stack">
       <section class="section"><h2 class="section-title">Module quizzes</h2><div class="group">${rows}</div></section>
-    </div>`;
+    </div>`);
   }
 
   /* ---------------------------------------------------------------- flashcards */
@@ -558,24 +567,24 @@
     if (!cardRun) startCards();
     const r = cardRun;
     if (r.done) {
-      return `${mast({ back: "practice", backLabel: "Practice", kicker: "Session complete", title: "Flashcards" })}
+      return spread(`${mast({ back: "practice", backLabel: "Practice", kicker: "Session complete", title: "Flashcards" })}
       <div class="wrap stack">
         <div class="score"><div><b>${r.got}/${r.got + r.again}</b><small>${r.again ? `${r.again} to see again soon.` : "Every card right first time."}</small></div></div>
+      </div>`, `<div class="wrap stack">
         <div class="btn-row"><button class="btn" type="button" data-act="cards-again">Another 12</button><a class="btn quiet" href="#practice">Done</a></div>
-      </div>`;
+      </div>`);
     }
     const it = r.items[r.i];
     const mod = MOD[it.g.mod];
     const b = cardBox(it.g.id);
     const status = b === null ? "New card" : b >= 3 ? "Mastered" : `Learning · ${b} in a row`;
-    return `${mast({
+    return spread(`${mast({
       back: "practice",
       backLabel: "Practice",
-      kicker: `Card ${r.i + 1} of ${r.items.length}`,
+      kicker: `Card ${r.i + 1} of ${r.items.length} · ${status}`,
       title: "Flashcards",
       extra: `<div class="mast-progress"><span style="width:${(r.i / r.items.length) * 100}%"></span></div>`
-    })}
-    <div class="wrap stack">
+    })}`, `<div class="wrap stack">
       <div class="flash${r.flipped ? " flipped" : ""}" data-act="flip" role="button" tabindex="0" aria-label="Flip card">
         <div class="flash-inner">
           <div class="face front"><span class="kick">Term</span><h2>${esc(it.g.term)}</h2><span class="hint">Say the definition to yourself, then tap to check.</span></div>
@@ -586,8 +595,7 @@
         <button class="btn quiet" type="button" data-act="card-again">Again</button>
         <button class="btn" type="button" data-act="card-got">Got it</button>
       </div>
-      <p class="flash-count">${status}</p>
-    </div>`;
+    </div>`, true);
   }
 
   function flipCard() {
@@ -632,7 +640,7 @@
       const L = g.term[0].toUpperCase();
       (groups[L] = groups[L] || []).push(g);
     });
-    return Object.keys(groups).map((L) => `<p class="g-letter">${L}</p><dl class="group g-list">${groups[L]
+    return Object.keys(groups).map((L) => `<p class="g-letter" id="g-${L}">${L}</p><dl class="group g-list">${groups[L]
       .map((g) => {
         const m = MOD[g.mod];
         return `<div class="g-item"><dt>${esc(g.term)}</dt><dd>${esc(g.def)}</dd><dd><a href="#${m.id}">Module ${m.code} · ${esc(m.title)}</a></dd></div>`;
@@ -640,21 +648,20 @@
       .join("")}</dl>`).join("");
   }
   function viewGlossary() {
-    return `${mast({ kicker: `${GLOSSARY.length} terms`, title: "Glossary", sub: "Market jargon, defined plainly." })}
-    <div class="wrap">
+    return spread(`${mast({ kicker: `${GLOSSARY.length} terms`, title: "Glossary", sub: "Market jargon, defined plainly." })}
+    <nav class="wrap letters spread-only" aria-label="Jump to a letter">${LETTERS.map((L) => `<button type="button" data-act="jump" data-l="${L}">${L}</button>`).join("")}</nav>`, `<div class="wrap">
       <div class="search"><div class="search-box">${icon("search")}<input id="gloss-q" type="search" data-in="gloss" placeholder="Search terms and definitions" value="${esc(glossQ)}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" aria-label="Search the glossary"></div></div>
       <div id="gloss-list">${glossList(glossQ)}</div>
-    </div>`;
+    </div>`, true);
   }
 
   /* ---------------------------------------------------------------- lab */
   function viewLab() {
-    return `${mast({ kicker: "Interactive tools", title: "The Lab", sub: "Three of the market’s core calculations, to play with." })}
-    <div class="wrap stack"><div class="group">
+    return spread(`${mast({ kicker: "Interactive tools", title: "The Lab", sub: "Three of the market’s core calculations, to play with." })}`, `<div class="wrap stack"><div class="group">
       <a class="row" href="#lab-slip" style="--sep:70px"><span class="code-badge">${icon("slip")}</span><span class="row-main"><span class="row-title">Slip builder</span><span class="row-sub">Collect written lines, then watch them sign down to 100%.</span></span>${chev}</a>
       <a class="row" href="#lab-tower" style="--sep:70px"><span class="code-badge">${icon("tower")}</span><span class="row-main"><span class="row-title">Layer tower</span><span class="row-sub">Send a catastrophe loss up an excess of loss programme.</span></span>${chev}</a>
       <a class="row" href="#lab-ratio" style="--sep:70px"><span class="code-badge">${icon("ratio")}</span><span class="row-main"><span class="row-title">Combined ratio</span><span class="row-sub">See whether an underwriting year made money.</span></span>${chev}</a>
-    </div></div>`;
+    </div></div>`, true);
   }
 
   /* --- slip builder --- */
@@ -721,7 +728,7 @@
       <span class="uw-name"><span class="swatch" style="background:var(--tint);opacity:${UW_OPACITY[i]}"></span>${n}</span>
       <div class="stepper"><button type="button" data-act="line" data-u="${i}" data-d="-1" aria-label="Decrease ${n}’s line">−</button><output id="uw-${i}">${fmtLine(slip.lines[i])}</output><button type="button" data-act="line" data-u="${i}" data-d="1" aria-label="Increase ${n}’s line">+</button></div>
     </div>`).join("");
-    return `${mast({ back: "lab", backLabel: "The Lab", kicker: "The Lab · placing", title: "Slip builder", sub: "You’re the broker. Collect lines until the risk is placed, then see how they sign down." })}
+    return spread(`${mast({ back: "lab", backLabel: "The Lab", kicker: "The Lab · placing", title: "Slip builder", sub: "You’re the broker. Collect lines until the risk is placed, then see how they sign down." })}
     <div class="wrap stack">
       <dl class="slipcard">
         <div><dt>UMR</dt><dd>B0000NBF2027 (example)</dd></div>
@@ -740,8 +747,7 @@
           <button type="button" data-act="slip-preset" data-p="over">Oversubscribed</button>
         </div>
       </section>
-      <div id="slip-out">${slipOut()}</div>
-    </div>`;
+    </div>`, `<div class="wrap stack"><div id="slip-out">${slipOut()}</div></div>`);
   }
 
   function refreshSlip() {
@@ -828,7 +834,7 @@
   }
 
   function viewTowerTool() {
-    return `${mast({ back: "lab", backLabel: "The Lab", kicker: "The Lab · reinsurance", title: "Layer tower", sub: "A catastrophe loss climbs an excess of loss programme. Drag the loss and watch who pays." })}
+    return spread(`${mast({ back: "lab", backLabel: "The Lab", kicker: "The Lab · reinsurance", title: "Layer tower", sub: "A catastrophe loss climbs an excess of loss programme. Drag the loss and watch who pays." })}
     <div class="wrap stack">
       <dl class="slipcard">
         <div><dt>Cedant</dt><dd>A regional property insurer (example)</dd></div>
@@ -848,8 +854,7 @@
         <button type="button" data-act="tower-preset" data-v="160">Major hurricane £160m</button>
         <button type="button" data-act="tower-preset" data-v="260">Extreme £260m</button>
       </div>
-      <div id="tower-out">${towerOut()}</div>
-    </div>`;
+    </div>`, `<div class="wrap stack"><div id="tower-out">${towerOut()}</div></div>`);
   }
 
   function refreshTower() {
@@ -916,9 +921,8 @@
       <label for="ratio-${f.k}"><span>${f.label}</span><output id="ratio-${f.k}-val">${fmtM(ratio[f.k])}</output></label>
       <input type="range" id="ratio-${f.k}" data-in="ratio" data-k="${f.k}" min="${f.min}" max="${f.max}" step="${f.step}" value="${ratio[f.k]}">
     </div>`).join("");
-    return `${mast({ back: "lab", backLabel: "The Lab", kicker: "The Lab · the numbers", title: "Combined ratio", sub: "Claims plus expenses, as a share of earned premium. Under 100% means underwriting made money." })}
+    return spread(`${mast({ back: "lab", backLabel: "The Lab", kicker: "The Lab · the numbers", title: "Combined ratio", sub: "Claims plus expenses, as a share of earned premium. Under 100% means underwriting made money." })}
     <div class="wrap stack">
-      <div id="ratio-out">${ratioOut()}</div>
       <section class="section"><h2 class="section-title">Your year, in £m</h2><div class="group">${sliders}</div>
         <div class="presets" role="group" aria-label="Example years">
           <button type="button" data-act="ratio-preset" data-p="benign">Quiet year</button>
@@ -926,7 +930,7 @@
           <button type="button" data-act="ratio-preset" data-p="soft">Soft market</button>
         </div>
       </section>
-    </div>`;
+    </div>`, `<div class="wrap stack"><div id="ratio-out">${ratioOut()}</div></div>`);
   }
 
   function refreshRatio() {
@@ -952,6 +956,8 @@
       }
       const box = document.getElementById("complete");
       if (box) box.innerHTML = completeHTML(l, true);
+      const tick = document.querySelector('.outline [aria-current="page"] .check');
+      if (tick) { tick.classList.add("done"); tick.innerHTML = icon("check"); }
     },
     answer(el) {
       const r = quizRun;
@@ -1006,6 +1012,14 @@
     "ratio-preset"(el) {
       ratio = Object.assign({}, RATIO_PRESETS[el.dataset.p]);
       refreshRatio();
+    },
+    jump(el) {
+      const target = document.getElementById(`g-${el.dataset.l}`);
+      if (!target) return;
+      const bar = document.querySelector(".search");
+      const inset = parseFloat(getComputedStyle(document.documentElement).paddingTop) || 0;
+      const y = target.getBoundingClientRect().top + window.scrollY - (bar ? bar.offsetHeight : 0) - inset;
+      window.scrollTo({ top: Math.max(0, y), behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
     },
     reset(el) {
       if (el.dataset.armed) {

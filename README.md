@@ -7,6 +7,8 @@ A pocket course in London Market insurance, built as an iPhone web app. You can 
 - **Glossary:** searchable definitions of market jargon, each linked to its module.
 - **Lab:** three interactive tools: a slip builder (written lines and signing down), an excess of loss layer tower, and a combined ratio calculator.
 
+It is designed for the **iPhone Duo**. On the 5.4-inch cover screen it works like a normal iPhone app. Unfold it and the app opens like a book: a left page and a right page, with the gap between them on the fold, so no text sits on the crease. For example, a lesson's outline stays on the left while you read on the right, a quiz question sits opposite its answers, and the Lab tools put the controls on the left and the results on the right. Folding or unfolding mid-lesson keeps your place. Other phones, iPads and desktop browsers get the same layouts at their own widths.
+
 Your progress shows on the home screen as a London slip, with each module stamped once you finish it. Progress is stored in the browser on your device (`localStorage`).
 
 ## Put it on your iPhone
@@ -16,7 +18,7 @@ The app is plain static files, so any static host works. With GitHub Pages:
 1. In the repository on GitHub, go to **Settings → Pages**.
 2. Under **Build and deployment**, choose **Deploy from a branch**, pick `main` and `/ (root)`, and save.
 3. After a minute, open the Pages URL (`https://<your-username>.github.io/london-market-insurance/`) in **Safari** on your iPhone.
-4. Tap **Share → Add to Home Screen**.
+4. Tap **Share → Add to Home Screen**. On an iPhone Duo you can do this folded or unfolded; the installed app adapts as you fold.
 
 It then opens full screen like a native app, and works without a connection after the first visit.
 

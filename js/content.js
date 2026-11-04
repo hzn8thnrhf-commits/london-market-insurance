@@ -1027,7 +1027,7 @@ window.SLIP_DATA.modules = [
     id: "m07",
     code: "07",
     title: "Reinsurance",
-    short: "Reinsurance",
+    short: "Re\u00ADinsurance",
     blurb: "Insurance for insurers: treaty, facultative, layers, reinstatements and the renewal calendar.",
     lessons: [
       {

@@ -37,6 +37,8 @@
   --r: 14px;
   --tabbar-h: 56px;
   --col: 640px;
+  --fold-gap: 44px;
+  --spine: rgba(14, 27, 51, 0.08);
   color-scheme: light;
 }
 
@@ -66,6 +68,7 @@
     --bad-soft: #331719;
     --tab-bg: rgba(13, 20, 35, 0.88);
     --shadow: 0 0 0 1px var(--rule);
+    --spine: rgba(0, 0, 0, 0.5);
     color-scheme: dark;
   }
 }
@@ -94,6 +97,7 @@
   --bad-soft: #331719;
   --tab-bg: rgba(13, 20, 35, 0.88);
   --shadow: 0 0 0 1px var(--rule);
+  --spine: rgba(0, 0, 0, 0.5);
   color-scheme: dark;
 }
 
@@ -378,8 +382,10 @@ h1, h2, h3 { text-wrap: balance; }
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
-@media (min-width: 420px) { .slots { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-@media (min-width: 640px) { .slots { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+/* sized by the slip card itself, so it adapts to a phone, a folded-open page or a desktop */
+.slip { container-type: inline-size; }
+@container (min-width: 360px) { .slots { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@container (min-width: 600px) { .slots { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
 .slot {
   position: relative;
   min-height: 78px;
@@ -795,4 +801,90 @@ h1, h2, h3 { text-wrap: balance; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
   .stamp.animate { animation: none; }
+}
+
+/* ---------- open-book spread: iPhone Duo unfolded, iPad landscape, desktop ----------
+   The screen splits into a left and a right page, with the gap between them on the fold.
+   On the cover screen and other phones, the two pages simply stack. */
+.spread-only { display: none; }
+.check svg { width: 15px; height: 15px; }
+.row[aria-current="page"] { background: var(--sunk); }
+.row[aria-current="page"] .row-title { color: var(--tint); }
+.letters button {
+  min-width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--mast-rule);
+  color: var(--mast-ink);
+  font: 500 15px var(--f-mono);
+  cursor: pointer;
+}
+.letters button:active { background: var(--mast-ink-2); color: var(--mast); }
+.cover-mark {
+  position: absolute;
+  top: 0;
+  right: 20px;
+  font: 700 128px/1 var(--f-display);
+  color: var(--mast-rule);
+  pointer-events: none;
+}
+
+@media (min-width: 760px) and (min-aspect-ratio: 5/4), (horizontal-viewport-segments: 2) {
+  #app { padding-bottom: 0; min-height: 0; }
+  .spread {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: var(--fold-gap);
+    align-items: start;
+  }
+  .page-l {
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    height: calc(100vh - env(safe-area-inset-top, 0px));
+    height: calc(100dvh - env(safe-area-inset-top, 0px));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    display: flex;
+    flex-direction: column;
+    padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px) + 20px);
+    scrollbar-width: none;
+  }
+  .page-l::-webkit-scrollbar { display: none; }
+  .page-l > .mast { flex: none; }
+  .page-l > .wrap { flex: none; width: 100%; }
+  .page .wrap { max-width: 600px; }
+  .page-r { min-width: 0; padding-top: 6px; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 40px); }
+
+  /* cover pages: the left page is all navy, title set at the foot like a book cover */
+  .page-l.cover { background: var(--mast); padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px)); }
+  .page-l.cover .mast { flex: 1 0 auto; display: flex; flex-direction: column; }
+  .page-l.cover .mast > .wrap { flex: 1; width: 100%; display: flex; flex-direction: column; }
+  .page-l.cover .mast-top { margin-bottom: auto; }
+  .page-l.cover .mast-title { font-size: 42px; }
+
+  .spread-only { display: block; }
+  .outline.spread-only { display: flex; flex-direction: column; gap: 8px; padding-top: 22px; }
+  .letters.spread-only { display: flex; flex-wrap: wrap; gap: 6px; padding-block: 4px 18px; }
+
+  /* the tab bar sits under the left page so nothing lands on the fold */
+  .tabbar { right: calc(50% + var(--fold-gap) / 2); padding-right: 12px; border-right: 0.5px solid var(--rule); }
+
+  /* a soft spine along the fold */
+  body::after {
+    content: "";
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: calc(50% - var(--fold-gap) / 2);
+    width: var(--fold-gap);
+    background: linear-gradient(90deg, transparent, var(--spine) 50%, transparent);
+    pointer-events: none;
+    z-index: 35;
+  }
+}
+
+/* Where the browser reports the hinge, size the gap to it exactly. */
+@media (horizontal-viewport-segments: 2) {
+  :root { --fold-gap: calc(env(viewport-segment-left 1 0, 50vw) - env(viewport-segment-right 0 0, 50vw) + 40px); }
 }
