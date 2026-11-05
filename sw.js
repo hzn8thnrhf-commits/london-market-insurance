@@ -22,6 +22,7 @@ const SHELL = [
   "js/modules/m15.js",
   "js/glossary.js",
   "js/figures.js",
+  "js/explore.js",
   "js/app.js",
   "manifest.webmanifest",
   "icons/icon.svg",
