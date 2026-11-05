@@ -969,7 +969,10 @@ h1, h2, h3 { text-wrap: balance; }
   overflow-wrap: break-word;
 }
 .node b { display: block; font-size: 14px; font-weight: 650; line-height: 1.25; -webkit-hyphens: auto; hyphens: auto; }
-.node span { display: block; margin-top: 2px; color: var(--ink-2); }
+.node span { display: block; margin-top: 2px; color: var(--ink-2); -webkit-hyphens: auto; hyphens: auto; }
+/* three boxes across: a touch smaller, so whole words fit */
+.g3 .node { padding: 8px 6px; font-size: 11.5px; }
+.g3 .node b { font-size: 13px; }
 .node .step { display: inline-grid; place-items: center; width: 20px; height: 20px; margin: 0 auto 4px; border-radius: 50%; background: var(--sunk); color: var(--ink-2); font-size: 11.5px; font-weight: 700; }
 .node.tone-ink { background: var(--mast); color: var(--mast-ink); box-shadow: none; }
 .node.tone-ink span { color: var(--mast-ink-2); }

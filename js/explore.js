@@ -612,5 +612,157 @@ window.SLIP_DATA = window.SLIP_DATA || {};
     }
   };
 
+  /* ---------------------------------------------------------------- m06 */
+  X["general-average"] = {
+    title: "Share the sacrifice",
+    blurb: "Jettison cargo to save a ship, then share the cost by value.",
+    ask: "In a storm, the master throws part of cargo owner B’s goods overboard to save the ship. Under general average, everyone contributes in proportion to the value they had at risk. Change the values and the size of the sacrifice.",
+    inputs: [
+      { k: "ship", label: "Value of the ship", min: 20, max: 100, step: 5, value: 60, unit: "m" },
+      { k: "a", label: "Cargo owner A’s goods", min: 5, max: 60, step: 5, value: 30, unit: "m" },
+      { k: "b", label: "Cargo owner B’s goods", min: 5, max: 60, step: 5, value: 10, unit: "m" },
+      { k: "s", label: "B’s goods jettisoned", min: 1, max: 10, step: 0.5, value: 5, unit: "m" }
+    ],
+    compute(v, H) {
+      const s = Math.min(v.s, v.b);
+      const T = v.ship + v.a + v.b;
+      const cShip = (s * v.ship) / T, cA = (s * v.a) / T, cB = (s * v.b) / T;
+      const share = (x) => Math.round((x / T) * 100);
+      const insight = `B’s goods worth ${H.fmtM(s)} went overboard to save the voyage. Everyone shares the cost by the value they had at risk: the ship pays ${gbp(cShip)} (${share(v.ship)}% of the values), cargo A ${gbp(cA)} and B itself ${gbp(cB)}. B is made good for the rest, so **B’s net loss is only ${gbp(cB)}**.\n\nIn practice each party’s insurer pays its client’s contribution. Notice that A’s goods were never touched, yet A pays: it benefited from the sacrifice.`;
+      return {
+        readouts: [["Ship pays", gbp(cShip)], ["A pays", gbp(cA)], ["B’s net loss", gbp(cB)]],
+        chart: {
+          type: "bars",
+          scale: 100,
+          ticks: [0, 25, 50, 75, 100],
+          suffix: "%",
+          rows: [
+            { label: "Values at risk", total: H.fmtM(T), segs: [[(v.ship / T) * 100, "Ship", "c1"], [(v.a / T) * 100, (v.a / T) * 100 > 12 ? "A" : "", "c2"], [(v.b / T) * 100, (v.b / T) * 100 > 12 ? "B" : "", "c3"]] },
+            { label: "Shares of the sacrifice", total: gbp(s), segs: [[(cShip / s) * 100, gbp(cShip), "c1"], [(cA / s) * 100, (cA / s) * 100 > 16 ? gbp(cA) : "", "c2"], [(cB / s) * 100, (cB / s) * 100 > 16 ? gbp(cB) : "", "c3"]] }
+          ],
+          legend: [["c1", "Shipowner"], ["c2", "Cargo A"], ["c3", "Cargo B"]]
+        },
+        insight
+      };
+    }
+  };
+
+  X["space-year"] = {
+    title: "A year in the space market",
+    blurb: "Add a satellite failure or two and watch a whole market’s premium disappear.",
+    ask: "The whole space insurance market collects a modest premium each year. Change it, and the number and size of satellite losses, and see what happens to the market’s result. (Illustrative figures.)",
+    inputs: [
+      { k: "prem", label: "Premium for the whole market", min: 300, max: 1000, step: 50, value: 500, unit: "usd" },
+      { k: "n", label: "Satellites lost this year", min: 0, max: 5, step: 1, value: 1 },
+      { k: "size", label: "Insured value of each", min: 100, max: 500, step: 50, value: 300, unit: "usd" }
+    ],
+    compute(v) {
+      const loss = v.n * v.size;
+      const lr = (loss / v.prem) * 100;
+      const scale = Math.max(v.prem, loss) * 1.05;
+      const insight = v.n === 0
+        ? `A clean year: no satellites lost, and the market keeps its ${usd(v.prem)} premium, less expenses. Years like this have to pay for the bad ones.`
+        : `${v.n === 1 ? "One failure" : `${v.n} failures`} at ${usd(v.size)} each cost ${usd(loss)}, a loss ratio of **${Math.round(lr)}%**${lr > 100 ? ": more than the whole market collected" : ""}.\n\nNotice how few events it takes. With large values, few risks and a small premium pool, a single launch failure can decide the year, which is why insurers enter and leave this class as results swing.`;
+      return {
+        readouts: [["Loss ratio", `${Math.round(lr)}%`, lr > 100 ? "bad" : lr > 60 ? "" : "good"], ["Market result", `${v.prem - loss < 0 ? "−" : ""}${usd(Math.abs(v.prem - loss))}`, v.prem - loss < 0 ? "bad" : "good"]],
+        chart: {
+          type: "bars",
+          scale,
+          ticks: [0, Math.round(scale / 2 / 100) * 100, Math.round(scale / 100) * 100].filter((x, i, a) => a.indexOf(x) === i && x <= scale),
+          prefix: "$",
+          suffix: "m",
+          rows: [
+            { label: "Premium collected", total: usd(v.prem), segs: [[v.prem, "", "c1"]] },
+            { label: "Claims from failures", total: usd(loss), segs: Array.from({ length: v.n }, (_, i) => [v.size, v.size / scale > 0.14 ? `#${i + 1}` : "", i % 2 ? "c2" : "c1m"]) }
+          ]
+        },
+        insight
+      };
+    }
+  };
+
+  X.bi = {
+    title: "Business interruption",
+    blurb: "Lengthen the recovery and watch lost profit outgrow the damage itself.",
+    ask: "A fire damages a factory. Change the cost of the damage, the factory’s annual gross profit, how long it takes to recover fully, and the indemnity period the client chose.",
+    inputs: [
+      { k: "pd", label: "Cost of the physical damage", min: 1, max: 40, step: 1, value: 8, unit: "m" },
+      { k: "gp", label: "Annual gross profit", min: 2, max: 40, step: 1, value: 12, unit: "m" },
+      { k: "rec", label: "Time to recover fully", min: 1, max: 30, step: 1, value: 18, unit: "mo" },
+      { k: "ip", label: "Indemnity period chosen", values: [6, 12, 18, 24, 36], value: 12, unit: "mo" }
+    ],
+    compute(v, H) {
+      const lost = (v.gp / 12) * v.rec;
+      const paid = (v.gp / 12) * Math.min(v.rec, v.ip);
+      const gap = lost - paid;
+      const scale = Math.max(v.pd, lost) * 1.05;
+      let insight = `The fire did ${H.fmtM(v.pd)} of damage, but the factory takes ${v.rec} months to recover, losing ${gbp(lost)} of gross profit${lost > v.pd ? ": **more than the damage itself**" : ""}.`;
+      insight += gap > 0.001
+        ? `\n\nWith a ${v.ip}-month indemnity period, only ${gbp(paid)} is covered, and the client bears ${gbp(gap)}. Customers who left during the outage don’t return the day the building reopens; choosing the indemnity period is really a forecast of how long recovery takes.`
+        : `\n\nThe ${v.ip}-month indemnity period covers the whole recovery, so all ${gbp(lost)} of lost profit is paid.`;
+      return {
+        readouts: [["Lost profit", gbp(lost)], ["Covered", gbp(paid)], ["Client bears", gbp(gap), gap > 0.001 ? "bad" : "good"]],
+        chart: {
+          type: "bars",
+          scale,
+          prefix: "£",
+          suffix: "m",
+          rows: [
+            { label: "Physical damage", total: H.fmtM(v.pd), segs: [[v.pd, "", "c2"]] },
+            { label: "Lost gross profit", total: gbp(lost), segs: [[paid, paid / scale > 0.2 ? "Covered" : "", "c1"], [gap, "", "hatch"]] }
+          ],
+          legend: [["c2", "Damage"], ["c1", "BI covered"], ["hatch", "Beyond the indemnity period"]]
+        },
+        insight
+      };
+    }
+  };
+
+  X["long-tail"] = {
+    title: "Inflation on a long tail",
+    blurb: "Stretch the tail and raise claims inflation, and watch the ultimate cost run away.",
+    ask: "A liability book is expected to cost £100m at today’s prices. Its claims are paid evenly over a number of years, and each year’s payments rise with claims inflation. Change both.",
+    inputs: [
+      { k: "years", label: "Years over which claims are paid", min: 1, max: 20, step: 1, value: 10, unit: "yr" },
+      { k: "infl", label: "Claims inflation each year", min: 0, max: 12, step: 0.5, value: 5, unit: "pct" }
+    ],
+    presets: [
+      { label: "Property, short tail", v: { years: 2, infl: 4 } },
+      { label: "US liability, social inflation", v: { years: 15, infl: 9 } }
+    ],
+    compute(v) {
+      const n = v.years, g = 1 + v.infl / 100;
+      let cum = 0;
+      const actual = [[0, 0]], today = [[0, 0]];
+      for (let t = 1; t <= n; t++) {
+        cum += (100 / n) * Math.pow(g, t);
+        actual.push([t, r1(cum)]);
+        today.push([t, r1((100 * t) / n)]);
+      }
+      const ult = cum;
+      const ymax = Math.max(120, Math.ceil(ult / 20) * 20);
+      const ticks = [];
+      for (let y = 0; y <= ymax; y += ymax > 200 ? 50 : 20) ticks.push(y);
+      const xt = n <= 5 ? Array.from({ length: n + 1 }, (_, i) => i) : [0, Math.round(n / 2), n];
+      const insight = `Paid over ${n} year${n > 1 ? "s" : ""} at ${pc(v.infl)} claims inflation, a book expected to cost £100m at today’s prices ends up costing **£${Math.round(ult)}m**, ${Math.round(ult - 100)}% more.\n\nThe longer the tail, the longer inflation has to compound. That is why social inflation in US liability is so dangerous for reserves, and why short-tail property barely notices the same inflation rate.`;
+      return {
+        readouts: [["Ultimate cost", `£${Math.round(ult)}m`], ["Above estimate", `+${Math.round(ult - 100)}%`, ult > 130 ? "bad" : ""]],
+        chart: {
+          type: "line",
+          title: "Cumulative claims paid",
+          height: 210,
+          x: { min: 0, max: n, ticks: xt, suffix: n > 1 ? "" : "", title: "Years after the policy period" },
+          y: { min: 0, max: ymax, ticks, prefix: "£", suffix: "m", title: "Paid to date" },
+          series: [
+            { name: "At today’s prices", tone: "neutral", dash: true, points: today },
+            { name: "With claims inflation", tone: "c2", points: actual }
+          ],
+          marks: [{ x: n, y: r1(ult), label: `£${Math.round(ult)}m`, dx: -8, dy: -10, anchor: "end", tone: "c2" }]
+        },
+        insight
+      };
+    }
+  };
+
   window.SLIP_DATA.explore = Object.assign(window.SLIP_DATA.explore || {}, X);
 })();

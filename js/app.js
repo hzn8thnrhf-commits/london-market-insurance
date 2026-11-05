@@ -491,7 +491,8 @@
 
   function figBody(id, spec) {
     if (spec.type === "graph") {
-      return `<div class="fig${spec.live ? " live" : ""}" data-fig="${id}"><svg class="edges" aria-hidden="true"></svg><div class="graph" style="--cols:${spec.cols};--cols-n:${spec.colsN || spec.cols}${spec.gap ? `;--gy:${spec.gap}px` : ""}${spec.gapX ? `;--gx:${spec.gapX}px` : ""}">${spec.nodes.map((n, i) => nodeHTML(n, i, spec)).join("")}</div><div class="edge-labels"${spec.live ? "" : ' aria-hidden="true"'}></div></div>`;
+      const narrow = (spec.colsN || spec.cols) / Math.min(...spec.nodes.map((n) => n.spanN || n.span || 1)) >= 3;
+      return `<div class="fig${spec.live ? " live" : ""}" data-fig="${id}"><svg class="edges" aria-hidden="true"></svg><div class="graph${narrow ? " g3" : ""}" style="--cols:${spec.cols};--cols-n:${spec.colsN || spec.cols}${spec.gap ? `;--gy:${spec.gap}px` : ""}${spec.gapX ? `;--gx:${spec.gapX}px` : ""}">${spec.nodes.map((n, i) => nodeHTML(n, i, spec)).join("")}</div><div class="edge-labels"${spec.live ? "" : ' aria-hidden="true"'}></div></div>`;
     }
     if (spec.type === "bars") {
       const last = spec.rows.length - 1;

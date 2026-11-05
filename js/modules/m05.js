@@ -176,9 +176,9 @@ window.SLIP_DATA = window.SLIP_DATA || {};
           { from: "rb", to: "agent", teach: "The risk data shows what the insurer is exposed to." },
           { from: "pb", to: "agent", teach: "The premium data shows whether the insurer is being paid." },
           { from: "cb", to: "agent", teach: "The claims data shows whether the business is profitable." },
-          { from: "agent", to: "accum", label: "checks", teach: "The agent looks for dangerous concentrations." },
-          { from: "agent", to: "breach", label: "checks", teach: "It looks for risks bound outside the authority." },
-          { from: "agent", to: "audit", label: "follows up", teach: "Anything odd prompts questions, and audits verify what the reports claim." }
+          { from: "agent", to: "accum", label: "checks", at: 0.72, teach: "The agent looks for dangerous concentrations." },
+          { from: "agent", to: "breach", label: "checks", at: 0.72, teach: "It looks for risks bound outside the authority." },
+          { from: "agent", to: "audit", label: "follows up", at: 0.72, teach: "Anything odd prompts questions, and audits verify what the reports claim." }
         ]
       },
       explore: "bdx-lag",
