@@ -1522,5 +1522,246 @@ window.SLIP_DATA = window.SLIP_DATA || {};
     }
   };
 
+  /* ---------------------------------------------------------------- m13 */
+  X["premium-plan"] = {
+    title: "Build a premium plan",
+    blurb: "Move retention, rate, exposure and new business, and see how much growth is really price.",
+    ask: "A class has £100m of expiring premium. Set next year’s retention, like-for-like rate change, exposure change and new business, and see the plan premium and where it comes from.",
+    inputs: [
+      { k: "ret", label: "Retention", min: 70, max: 100, step: 1, value: 88, unit: "pct" },
+      { k: "rate", label: "Like-for-like rate change", min: -10, max: 15, step: 1, value: 5, show: (x) => `${x > 0 ? "+" : x < 0 ? "−" : ""}${Math.abs(x)}%` },
+      { k: "exp", label: "Exposure change", min: -5, max: 10, step: 1, value: 3, show: (x) => `${x > 0 ? "+" : x < 0 ? "−" : ""}${Math.abs(x)}%` },
+      { k: "nb", label: "New business", min: 0, max: 30, step: 1, value: 15, unit: "m" }
+    ],
+    presets: [
+      { label: "Hard market", v: { ret: 90, rate: 10, exp: 3, nb: 8 } },
+      { label: "Growth at any price", v: { ret: 92, rate: -6, exp: 4, nb: 25 } }
+    ],
+    compute(v) {
+      const renewed = v.ret;
+      const rateAdd = (renewed * v.rate) / 100;
+      const expAdd = ((renewed + rateAdd) * v.exp) / 100;
+      const plan = renewed + rateAdd + expAdd + v.nb;
+      const growth = plan - 100;
+      const insight = `The plan premium is **£${r1(plan)}m**, ${growth >= 0 ? `up ${r1(growth)}%` : `down ${r1(-growth)}%`} on the expiring £100m. Of that change, ${gbp(rateAdd)} comes from price, ${gbp(expAdd)} from exposure, ${gbp(v.nb)} from new clients and −${gbp(100 - v.ret)} from business lost.${v.rate < 0 && growth > 0 ? `\n\nNotice the danger: premium is growing while rates are **falling**. The growth comes from volume at lower prices, which is exactly the pattern a planner should question.` : v.rate > 0 ? `\n\nOnly the rate line improves the margin on each policy; the rest just changes how much business there is.` : ""}`;
+      return {
+        readouts: [["Plan premium", `£${r1(plan)}m`, "c1"], ["Growth", `${growth >= 0 ? "+" : "−"}${r1(Math.abs(growth))}%`], ["From price", gbp(rateAdd), v.rate < 0 ? "bad" : ""]],
+        chart: {
+          type: "waterfall",
+          prefix: "£",
+          suffix: "m",
+          dp: 1,
+          steps: [
+            { label: "Expiring premium", value: 100, total: true },
+            { label: "Lost at renewal", value: -(100 - v.ret) },
+            { label: "Rate change", value: rateAdd },
+            { label: "Exposure change", value: expAdd },
+            { label: "New business", value: v.nb },
+            { label: "Plan premium", total: true }
+          ]
+        },
+        insight
+      };
+    }
+  };
+
+  X["on-level"] = {
+    title: "On-level a past loss ratio",
+    blurb: "Pit two years of rate rises against two years of claims inflation.",
+    ask: "Two years ago a class produced an ultimate loss ratio of 60%. Restate it at today’s prices and claims costs. Change the two years’ rate changes and the claims inflation.",
+    inputs: [
+      { k: "lr", label: "Past loss ratio", min: 40, max: 80, step: 1, value: 60, unit: "pct" },
+      { k: "r1", label: "Rate change last year but one", min: -10, max: 15, step: 1, value: 8, show: (x) => `${x > 0 ? "+" : x < 0 ? "−" : ""}${Math.abs(x)}%` },
+      { k: "r2", label: "Rate change last year", min: -10, max: 15, step: 1, value: 5, show: (x) => `${x > 0 ? "+" : x < 0 ? "−" : ""}${Math.abs(x)}%` },
+      { k: "inf", label: "Claims inflation a year", min: 0, max: 12, step: 1, value: 6, unit: "pct" }
+    ],
+    compute(v) {
+      const rates = (1 + v.r1 / 100) * (1 + v.r2 / 100);
+      const infl = Math.pow(1 + v.inf / 100, 2);
+      const trended = v.lr * infl;
+      const onl = trended / rates;
+      const insight = `Claims inflation of ${v.inf}% a year raises today’s cost of those claims by ${r1((infl - 1) * 100)}%, to a ${r1(trended)}% loss ratio. Rates have changed by a cumulative ${r1((rates - 1) * 100)}%, which brings it to **${r1(onl)}%** at today’s prices.\n\n${onl < v.lr - 0.5 ? "Rates have outrun inflation, so the business is genuinely more profitable than it was." : onl > v.lr + 0.5 ? "Inflation has outrun the rate increases, so despite the price rises, margins are **worse** than two years ago." : "Rates have only just kept pace with inflation: the price rises bought no extra margin at all."} A rate increase only improves margins when it beats claims inflation.`;
+      return {
+        readouts: [["Past", `${v.lr}%`], ["At today’s costs", `${r1(trended)}%`], ["On-levelled", `${r1(onl)}%`, onl > v.lr + 0.5 ? "bad" : onl < v.lr - 0.5 ? "good" : ""]],
+        chart: {
+          type: "waterfall",
+          suffix: "%",
+          dp: 1,
+          steps: [
+            { label: "Past loss ratio", value: v.lr, total: true },
+            { label: "Claims inflation", value: trended - v.lr },
+            { label: "Rate changes since", value: onl - trended },
+            { label: "On-levelled", total: true }
+          ]
+        },
+        insight
+      };
+    }
+  };
+
+  X["net-result"] = {
+    title: "From gross to net",
+    blurb: "Change acquisition costs, losses and reinsurance, and follow £200m down to the result.",
+    ask: "A plan writes £200m of gross premium with £16m of operating expenses. Change its acquisition costs, loss ratio, reinsurance spend and expected recoveries, and its investment income.",
+    inputs: [
+      { k: "acq", label: "Acquisition costs", min: 20, max: 40, step: 1, value: 28, unit: "pct" },
+      { k: "lr", label: "Gross loss ratio", min: 40, max: 90, step: 1, value: 59, unit: "pct" },
+      { k: "rp", label: "Reinsurance premium", min: 0, max: 40, step: 1, value: 20, unit: "m" },
+      { k: "rr", label: "Expected recoveries", min: 0, max: 30, step: 1, value: 12, unit: "m" },
+      { k: "inv", label: "Investment income", min: 0, max: 15, step: 1, value: 6, unit: "m" }
+    ],
+    compute(v, H) {
+      const P = 200, acq = (P * v.acq) / 100, cl = (P * v.lr) / 100, ox = 16;
+      const net = v.rp - v.rr;
+      const uw = P - acq - cl - ox - net;
+      const gcor = ((acq + cl + ox) / P) * 100;
+      const ncor = ((acq + cl + ox + net) / P) * 100;
+      let insight = `Gross combined ratio ${r1(gcor)}%, net ${r1(ncor)}%. The underwriting result is ${H.fmtM(uw)}, and investment income brings the overall result to **${H.fmtM(uw + v.inv)}**.`;
+      insight += net > 0
+        ? `\n\nReinsurance costs ${H.fmtM(net)} more than it is expected to recover: the margin paid for lower volatility and capital. That is normal.`
+        : net < 0
+          ? `\n\n**Be suspicious**: this plan expects reinsurers to pay back more than they charge. Over time reinsurers won’t sustain that, so the net result is probably flattered.`
+          : `\n\nThe reinsurance is assumed to break even, which is optimistic: reinsurers expect a margin.`;
+      return {
+        readouts: [["Gross combined", `${r1(gcor)}%`], ["Net combined", `${r1(ncor)}%`, ncor > 100 ? "bad" : ""], ["Overall", H.fmtM(uw + v.inv), uw + v.inv >= 0 ? "good" : "bad"]],
+        chart: {
+          type: "waterfall",
+          prefix: "£",
+          suffix: "m",
+          dp: 0,
+          steps: [
+            { label: "Gross premium", value: P },
+            { label: "Acquisition", value: -acq },
+            { label: "Gross claims", value: -cl },
+            { label: "Expenses", value: -ox },
+            { label: "Net reinsurance", value: -net },
+            { label: "Underwriting", total: true },
+            { label: "Investment", value: v.inv },
+            { label: "Overall result", total: true }
+          ]
+        },
+        insight
+      };
+    }
+  };
+
+  X.roc = {
+    title: "Return on capital by class",
+    blurb: "Set a hurdle and reprice the classes, and see which earn their capital.",
+    ask: "Three classes use very different amounts of capital. Set the capital providers’ hurdle rate, and change the price of property catastrophe and professional indemnity, to see which classes clear it.",
+    inputs: [
+      { k: "h", label: "Hurdle rate", min: 5, max: 20, step: 1, value: 12, unit: "pct" },
+      { k: "cat", label: "Price change: property catastrophe", min: -15, max: 15, step: 1, value: 0, show: (x) => `${x > 0 ? "+" : x < 0 ? "−" : ""}${Math.abs(x)}%` },
+      { k: "pi", label: "Price change: professional indemnity", min: -10, max: 15, step: 1, value: 0, show: (x) => `${x > 0 ? "+" : x < 0 ? "−" : ""}${Math.abs(x)}%` }
+    ],
+    compute(v) {
+      const cls = [
+        { n: "Marine cargo", p: 40, pr: 4, c: 16, ch: 0 },
+        { n: "Property catastrophe", p: 60, pr: 12, c: 90, ch: v.cat },
+        { n: "Professional indemnity", p: 50, pr: 3, c: 35, ch: v.pi }
+      ].map((x) => Object.assign(x, { prof: x.pr + (x.p * x.ch) / 100 })).map((x) => Object.assign(x, { roc: (x.prof / x.c) * 100 }));
+      const tot = cls.reduce((a, x) => a + x.prof, 0), cap = cls.reduce((a, x) => a + x.c, 0);
+      const below = cls.filter((x) => x.roc < v.h);
+      const pi = cls[2];
+      const need = ((v.h / 100) * pi.c - 3) / 50 * 100;
+      let insight = `Overall the plan earns ${r1((tot / cap) * 100)}% on £${cap}m of capital. ${below.length ? `**${below.map((x) => x.n).join(" and ")}** fall${below.length === 1 ? "s" : ""} short of the ${v.h}% hurdle.` : `Every class clears the ${v.h}% hurdle.`}`;
+      insight += `\n\nCargo earns ${r1(cls[0].roc)}% on very little capital, while catastrophe needs £90m: a fat margin on a lot of capital can be a worse use of money than a thin margin on a little. PI needs a price rise of about ${Math.max(0, Math.round(need))}% to reach ${v.h}%.`;
+      return {
+        readouts: [["Whole plan", `${r1((tot / cap) * 100)}%`, (tot / cap) * 100 >= v.h ? "good" : "bad"], ["Classes below hurdle", String(below.length), below.length ? "bad" : "good"]],
+        chart: {
+          type: "bars",
+          scale: 30,
+          suffix: "%",
+          mark: [v.h, `Hurdle ${v.h}%`],
+          rows: cls.map((x) => ({ label: `${x.n} · capital £${x.c}m`, total: `${r1(x.roc)}% on profit ${gbp(x.prof)}`, segs: [[Math.max(0, Math.min(30, x.roc)), "", x.roc >= v.h ? "c1" : "c2"]] })),
+          legend: [["c1", "Clears the hurdle"], ["c2", "Falls short"]]
+        },
+        insight
+      };
+    }
+  };
+
+  X.variance = {
+    title: "Explain the variance",
+    blurb: "Mix rate shortfalls, extra volume and big losses, and trace the result back to plan.",
+    ask: "The plan was £200m of premium at a 60% loss ratio and 30% expenses: a £20m profit. Change what actually happened: rates against plan, volume against plan, and any extra large or catastrophe losses.",
+    inputs: [
+      { k: "rate", label: "Rates achieved against plan", min: -10, max: 5, step: 1, value: -6, show: (x) => `${x > 0 ? "+" : x < 0 ? "−" : ""}${Math.abs(x)} points` },
+      { k: "vol", label: "Volume against plan", min: -20, max: 20, step: 5, value: 10, show: (x) => `${x > 0 ? "+" : x < 0 ? "−" : ""}${Math.abs(x)}%` },
+      { k: "large", label: "Extra large losses", min: 0, max: 20, step: 1, value: 4, unit: "m" },
+      { k: "cat", label: "A catastrophe", min: 0, max: 40, step: 5, value: 0, unit: "m" }
+    ],
+    compute(v, H) {
+      const p1 = 200 * (1 + v.rate / 100);
+      const prof1 = 0.7 * p1 - 120;
+      const prof2 = prof1 * (1 + v.vol / 100);
+      const actual = prof2 - v.large - v.cat;
+      const prem = p1 * (1 + v.vol / 100);
+      let insight = `Premium is ${H.fmtM(prem)}, ${prem >= 200 ? `${r1((prem / 200 - 1) * 100)}% ahead of` : `${r1((1 - prem / 200) * 100)}% behind`} plan, but the result is **${H.fmtM(actual)}** against a plan of £20m.`;
+      if (v.rate < 0 && v.vol > 0) insight += `\n\nThe headline growth hides the problem: each policy is priced ${-v.rate} points below plan, so its margin is thinner, and writing more of them multiplies the shortfall rather than fixing it.`;
+      if (v.large || v.cat) insight += ` Large and catastrophe losses add ${H.fmtM(v.large + v.cat)} of volatility that may not repeat; the rate shortfall will.`;
+      return {
+        readouts: [["Actual result", H.fmtM(actual), actual >= 20 ? "good" : actual >= 0 ? "" : "bad"], ["Versus plan", `${actual - 20 >= 0 ? "+" : "−"}${H.fmtM(Math.abs(actual - 20))}`, actual >= 20 ? "good" : "bad"]],
+        chart: {
+          type: "waterfall",
+          prefix: "£",
+          suffix: "m",
+          dp: 1,
+          steps: [
+            { label: "Plan result", value: 20, total: true },
+            { label: "Rates against plan", value: prof1 - 20 },
+            { label: "Volume against plan", value: prof2 - prof1 },
+            { label: "Large losses", value: -v.large },
+            { label: "Catastrophe", value: -v.cat },
+            { label: "Actual result", total: true }
+          ]
+        },
+        insight
+      };
+    }
+  };
+
+  X.remediation = {
+    title: "Remediate a class",
+    blurb: "Drop the worst business and reprice the rest: watch premium fall and profit rise.",
+    ask: "A £100m class carries £10m of fixed costs plus 20% variable costs. One segment performs badly. Decide how big that segment is and how bad, then drop it and put up rates on the rest, losing some clients.",
+    inputs: [
+      { k: "share", label: "Share of the book in the bad segment", min: 10, max: 40, step: 5, value: 25, unit: "pct" },
+      { k: "badlr", label: "Its loss ratio", min: 80, max: 150, step: 5, value: 110, unit: "pct" },
+      { k: "rate", label: "Rate rise on the rest", min: 0, max: 15, step: 1, value: 8, unit: "pct" },
+      { k: "lost", label: "Clients lost to the rise", min: 0, max: 25, step: 5, value: 10, unit: "pct" }
+    ],
+    compute(v, H) {
+      const goodP = 100 - v.share, goodLR = 58;
+      const before = 100 - ((v.share * v.badlr) / 100 + (goodP * goodLR) / 100) - (10 + 20);
+      const s1 = before + (-v.share + (v.share * v.badlr) / 100 + 0.2 * v.share);
+      const p2 = goodP * (1 + v.rate / 100);
+      const s2 = s1 + goodP * (v.rate / 100) * 0.8;
+      const lr2 = goodLR / (1 + v.rate / 100);
+      const lostP = (p2 * v.lost) / 100;
+      const s3 = s2 - lostP * (1 - lr2 / 100 - 0.2);
+      const pAfter = p2 - lostP;
+      const erB = 30, erA = ((10 + 0.2 * pAfter) / pAfter) * 100;
+      const insight = `Premium falls from £100m to **${gbp(pAfter)}**, but the result swings from ${H.fmtM(before)} to **${H.fmtM(s3)}**.\n\nNotice the expense ratio: it rises from ${erB}% to ${r1(erA)}%, because the £10m of fixed costs is now spread over less premium. That is the temptation to keep bad business “to cover the expense base”. It’s a trap: the bad segment was costing far more than its share of overheads.`;
+      return {
+        readouts: [["Premium after", gbp(pAfter)], ["Result after", H.fmtM(s3), s3 > before ? "good" : "bad"], ["Expense ratio after", `${r1(erA)}%`, "bad"]],
+        chart: {
+          type: "waterfall",
+          prefix: "£",
+          suffix: "m",
+          dp: 1,
+          steps: [
+            { label: "Result before", value: before, total: true },
+            { label: "Drop the bad segment", value: s1 - before },
+            { label: "Rate rise on the rest", value: s2 - s1 },
+            { label: "Clients lost", value: s3 - s2 },
+            { label: "Result after", total: true }
+          ]
+        },
+        insight
+      };
+    }
+  };
+
   window.SLIP_DATA.explore = Object.assign(window.SLIP_DATA.explore || {}, X);
 })();
