@@ -847,5 +847,266 @@ window.SLIP_DATA = window.SLIP_DATA || {};
     }
   };
 
+  /* ---------------------------------------------------------------- m07 */
+  X["quota-share"] = {
+    title: "A quota share",
+    tab: "Quota share",
+    blurb: "Change the cession, the loss ratio and the commission, and see who makes money.",
+    ask: "An insurer writes £50m of premium and spends 30% of it on acquisition and running costs. Change how much it cedes, how bad the year is and the ceding commission, and compare the results.",
+    inputs: [
+      { k: "q", label: "Share ceded", min: 10, max: 90, step: 5, value: 40, unit: "pct" },
+      { k: "lr", label: "Loss ratio for the year", min: 30, max: 130, step: 5, value: 60, unit: "pct" },
+      { k: "c", label: "Ceding commission", min: 15, max: 40, step: 2.5, value: 30, unit: "pct" }
+    ],
+    presets: [
+      { label: "Good year", v: { lr: 45 } },
+      { label: "Catastrophe year", v: { lr: 110 } }
+    ],
+    compute(v, H) {
+      const P = 50, C = (P * v.lr) / 100, E = 15;
+      const pc = (P * v.q) / 100, cc = (C * v.q) / 100, k = (pc * v.c) / 100;
+      const gross = P - C - E;
+      const net = P - pc - (C - cc) + k - E;
+      const re = pc - cc - k;
+      let insight = `The cedant cedes £${r1(pc)}m of premium and recovers £${r1(cc)}m of claims, and receives £${r1(k)}m of ceding commission.\n\n`;
+      insight += gross >= 0
+        ? `In this year the book makes ${gbp(gross)} gross. The quota share hands ${gbp(gross - net)} of that to the reinsurer: a good year’s profit is shared, just like a bad year’s loss.`
+        : `In this year the book loses ${gbp(-gross)} gross. The quota share cuts the cedant’s loss to ${gbp(-net)}: the reinsurer takes its ${v.q}% share of the pain.`;
+      if (Math.abs(v.c - 30) >= 2.5) insight += ` Notice the commission: at ${pc(v.c)}, ${v.c > 30 ? "more" : "less"} than the cedant’s 30% expense ratio, ${v.c > 30 ? "the cedant actually earns a margin on the business it cedes." : "ceding costs the cedant more than its own expenses on that business."}`;
+      return {
+        readouts: [["Cedant, no reinsurance", gbp(gross), gross >= 0 ? "good" : "bad"], ["Cedant, with quota share", gbp(net), net >= 0 ? "good" : "bad"], ["Reinsurer", gbp(re), re >= 0 ? "good" : "bad"]],
+        chart: {
+          type: "bars",
+          scale: 100,
+          ticks: [0, 25, 50, 75, 100],
+          suffix: "%",
+          rows: [
+            { label: "Premium", total: `£${P}m`, segs: [[100 - v.q, "Kept", "c1"], [v.q, v.q >= 20 ? "Ceded" : "", "c2"]] },
+            { label: "Claims", total: `£${r1(C)}m`, segs: [[100 - v.q, "Kept", "c1"], [v.q, v.q >= 20 ? "Ceded" : "", "c2"]] }
+          ],
+          legend: [["c1", "Kept by the cedant"], ["c2", "Ceded to the reinsurer"]]
+        },
+        insight
+      };
+    }
+  };
+
+  X.surplus = {
+    title: "A surplus treaty",
+    tab: "Surplus",
+    blurb: "Grow the risk and see how a fixed retention changes the share ceded.",
+    ask: "The cedant keeps a fixed retention on each risk and cedes the surplus, up to a number of lines. Change the size of the risk, the retention and the lines, and see how a claim on that risk is shared.",
+    inputs: [
+      { k: "size", label: "Sum insured of the risk", min: 0.5, max: 30, step: 0.5, value: 10, unit: "m" },
+      { k: "ret", label: "Retention, one line", min: 1, max: 5, step: 0.5, value: 2, unit: "m" },
+      { k: "lines", label: "Lines in the treaty", min: 1, max: 15, step: 1, value: 9 },
+      { k: "claim", label: "Claim, as a share of the sum insured", min: 10, max: 100, step: 10, value: 50, unit: "pct" }
+    ],
+    presets: [
+      { label: "Small risk", v: { size: 1.5 } },
+      { label: "£10m risk", v: { size: 10, ret: 2, lines: 9 } },
+      { label: "£25m risk", v: { size: 25, ret: 2, lines: 9 } }
+    ],
+    compute(v, H) {
+      const kept = Math.min(v.size, v.ret);
+      const cap = v.ret * v.lines;
+      const ceded = Math.min(Math.max(v.size - v.ret, 0), cap);
+      const fac = Math.max(v.size - v.ret - cap, 0);
+      const s = (x) => (x / v.size) * 100;
+      const cl = (v.size * v.claim) / 100;
+      let insight;
+      if (v.size <= v.ret) insight = `This risk is no bigger than the ${gbp(v.ret)} retention, so the cedant keeps **all of it**. Small risks never reach the treaty.`;
+      else {
+        insight = `The cedant keeps its ${gbp(v.ret)} line, **${Math.round(s(kept))}% of this risk**, and cedes ${gbp(ceded)} (${Math.round(s(ceded))}%). A ${gbp(cl)} claim is shared in the same proportions: the cedant pays ${gbp((cl * kept) / v.size)}.`;
+        insight += fac > 0
+          ? `\n\nBut the treaty’s capacity is only ${v.lines} × ${gbp(v.ret)} = ${gbp(cap)}, so **${gbp(fac)} is left over**: the cedant must buy facultative cover for it or decline the risk.`
+          : `\n\nNotice the even net book this creates: however large the risk, the cedant never keeps more than ${gbp(v.ret)}.`;
+      }
+      return {
+        readouts: [["Cedant keeps", `${gbp(kept)} · ${Math.round(s(kept))}%`, "c1"], ["Treaty takes", `${gbp(ceded)} · ${Math.round(s(ceded))}%`, "c2"], ["Needs fac", gbp(fac), fac > 0 ? "bad" : ""]],
+        chart: {
+          type: "bars",
+          scale: 100,
+          ticks: [0, 25, 50, 75, 100],
+          suffix: "%",
+          rows: [
+            { label: "The risk", total: gbp(v.size), segs: [[s(kept), s(kept) >= 18 ? "Kept" : "", "c1"], [s(ceded), s(ceded) >= 18 ? "Treaty" : "", "c2"], [s(fac), s(fac) >= 18 ? "Fac" : "", "c3"]] },
+            { label: "A claim on it", total: gbp(cl), segs: [[s(kept), "", "c1"], [s(ceded), "", "c2"], [s(fac), "", "c3"]] }
+          ],
+          legend: [["c1", "Cedant’s retention"], ["c2", "Surplus treaty"], ["c3", "Facultative"]]
+        },
+        insight
+      };
+    }
+  };
+
+  X["xl-layer"] = {
+    title: "An excess of loss layer",
+    blurb: "Send different losses through a layer and see who pays which slice.",
+    ask: "A cedant buys a layer of cover in excess of its retention. Change the loss, the retention and the limit, and see how the loss is sliced.",
+    inputs: [
+      { k: "loss", label: "Size of the loss", min: 0, max: 40, step: 1, value: 12, unit: "m" },
+      { k: "ret", label: "Retention", min: 1, max: 15, step: 1, value: 5, unit: "m" },
+      { k: "lim", label: "Layer limit", min: 2, max: 30, step: 1, value: 10, unit: "m" }
+    ],
+    presets: [
+      { label: "£3m loss", v: { loss: 3, ret: 5, lim: 10 } },
+      { label: "£12m loss", v: { loss: 12, ret: 5, lim: 10 } },
+      { label: "£20m loss", v: { loss: 20, ret: 5, lim: 10 } }
+    ],
+    compute(v, H) {
+      const below = Math.min(v.loss, v.ret);
+      const rec = Math.min(Math.max(v.loss - v.ret, 0), v.lim);
+      const above = Math.max(v.loss - v.ret - v.lim, 0);
+      const S = Math.max(v.loss, v.ret + v.lim) * 1.04;
+      let insight;
+      if (v.loss <= v.ret) insight = `The ${gbp(v.loss)} loss sits inside the ${gbp(v.ret)} retention, so the cedant pays it all and **the reinsurer pays nothing**. Most losses never reach an excess of loss layer; that is why it’s cheap compared with a quota share.`;
+      else if (above === 0) insight = `The cedant pays its ${gbp(v.ret)} retention and the layer pays the rest: ${gbp(v.loss)} − ${gbp(v.ret)} = **${gbp(rec)}**, using ${Math.round((rec / v.lim) * 100)}% of the limit.`;
+      else insight = `The loss exhausts the layer. The reinsurer pays its full ${gbp(v.lim)} limit, and the cedant pays its ${gbp(v.ret)} retention **plus ${gbp(above)} above the layer**: ${gbp(below + above)} in all. To close that gap it would need another layer on top.`;
+      return {
+        readouts: [["Cedant pays", gbp(below + above), above > 0 ? "bad" : ""], ["Reinsurer pays", gbp(rec), "c1"], ["Limit used", `${Math.round((rec / v.lim) * 100)}%`]],
+        chart: {
+          type: "bars",
+          scale: S,
+          prefix: "£",
+          suffix: "m",
+          ticks: [0, v.ret, v.ret + v.lim],
+          rows: [
+            { label: "The cover", total: `${gbp(v.lim)} xs ${gbp(v.ret)}`, segs: [[v.ret, "Retention", "idle"], [v.lim, "Layer", "c1l"]] },
+            { label: "The loss", total: gbp(v.loss), segs: [[below, below / S > 0.15 ? "Cedant" : "", "neutral"], [rec, rec / S > 0.15 ? "Reinsurer" : "", "c1"], [above, above / S > 0.15 ? "Cedant" : "", "hatch"]] }
+          ],
+          legend: [["neutral", "Retention"], ["c1", "Paid by the layer"], ["hatch", "Above the layer"]]
+        },
+        insight
+      };
+    }
+  };
+
+  X.reinstatement = {
+    title: "Two storms, one layer",
+    blurb: "Hit a layer twice and see what a reinstatement buys.",
+    ask: "A £20m xs £20m catastrophe layer costs £2m. Two storms hit it in the same year. Change how much of the layer each uses, and how many reinstatements the cedant bought.",
+    inputs: [
+      { k: "e1", label: "First storm’s loss to the layer", min: 0, max: 20, step: 1, value: 8, unit: "m" },
+      { k: "e2", label: "Second storm’s loss to the layer", min: 0, max: 20, step: 1, value: 15, unit: "m" },
+      { k: "n", label: "Reinstatements at 100%", min: 0, max: 2, step: 1, value: 1 }
+    ],
+    compute(v, H) {
+      const L = 20, P = 2;
+      const agg = L * (1 + v.n);
+      const r1v = Math.min(v.e1, L, agg);
+      const avail2 = v.n > 0 ? Math.min(L, agg - r1v) : L - r1v;
+      const r2v = Math.min(v.e2, avail2);
+      const reinstated = Math.min(r1v + r2v, v.n * L);
+      const rp = (P * reinstated) / L;
+      const short = v.e2 - r2v;
+      let insight = `The first storm uses ${gbp(r1v)} of the ${gbp(L)} limit. `;
+      insight += v.n > 0
+        ? `With ${v.n} reinstatement${v.n > 1 ? "s" : ""}, the cedant pays £2m × ${r1v} ÷ 20 = ${gbp((P * Math.min(r1v, v.n * L)) / L)} to restore it, so the second storm finds ${gbp(avail2)} waiting and recovers ${gbp(r2v)}.`
+        : `Without a reinstatement, only ${gbp(L - r1v)} is left for the second storm, which recovers ${gbp(r2v)}.`;
+      if (short > 0.001) insight += ` **${gbp(short)} of the second storm falls back on the cedant.**`;
+      if (v.n > 0) insight += `\n\nReinstatement premium is due on the limit restored: ${gbp(rp)} in all this year. It is the price of being protected against the next storm as well as this one.`;
+      return {
+        readouts: [["Recovered", gbp(r1v + r2v), "c1"], ["Reinstatement premium", gbp(rp)], ["Not covered", gbp(short), short > 0.001 ? "bad" : "good"]],
+        chart: {
+          type: "bars",
+          scale: L,
+          prefix: "£",
+          suffix: "m",
+          ticks: [0, 10, 20],
+          rows: [
+            { label: "First storm", total: gbp(v.e1), segs: [[r1v, r1v >= 4 ? "Recovered" : "", "c1"]] },
+            { label: "Second storm", total: gbp(v.e2), segs: [[r2v, r2v >= 4 ? "Recovered" : "", "c1"], [short, "", "hatch"]] }
+          ],
+          legend: [["c1", "Paid by the layer"], ["hatch", "Limit exhausted"]]
+        },
+        insight
+      };
+    }
+  };
+
+  X["cat-bond"] = {
+    title: "A catastrophe bond",
+    blurb: "Move an industry loss through a bond’s trigger and watch the investors’ principal.",
+    ask: "Investors put US$100m into a cat bond with an industry-loss trigger. They lose principal once the industry’s loss from one hurricane passes the attachment, and all of it at the exhaustion point. Change the storm and the trigger.",
+    inputs: [
+      { k: "loss", label: "Industry loss from the hurricane", min: 0, max: 100, step: 5, value: 45, show: (x) => `US$${x}bn` },
+      { k: "att", label: "Attachment point", min: 20, max: 60, step: 5, value: 40, show: (x) => `US$${x}bn` },
+      { k: "w", label: "Width to exhaustion", min: 10, max: 40, step: 5, value: 20, show: (x) => `US$${x}bn` }
+    ],
+    compute(v) {
+      const f = Math.min(1, Math.max(0, (v.loss - v.att) / v.w));
+      const lost = 100 * f;
+      let insight;
+      if (f === 0) insight = `The hurricane cost the industry US$${v.loss}bn, below the US$${v.att}bn attachment. **Investors keep all their principal** and their coupon. Most years end this way, which is what investors are paid for.`;
+      else if (f < 1) insight = `The industry loss of US$${v.loss}bn is ${Math.round(f * 100)}% of the way through the trigger window, so investors lose **US$${Math.round(lost)}m** of principal, which pays the sponsor’s claims.`;
+      else insight = `The industry loss passes the US$${v.att + v.w}bn exhaustion point: **investors lose all US$100m**. Their money now pays the sponsor’s claims.`;
+      insight += `\n\nNotice the trigger is the industry’s loss, not the sponsor’s. The sponsor’s own loss could be higher or lower than this payout suggests: that is basis risk.`;
+      return {
+        readouts: [["Principal lost", `${Math.round(lost)}%`, lost > 0 ? "bad" : "good"], ["Paid to sponsor", `US$${Math.round(lost)}m`, lost > 0 ? "c1" : ""]],
+        chart: {
+          type: "line",
+          title: "Principal lost against industry loss",
+          height: 200,
+          x: { min: 0, max: 100, ticks: [0, 25, 50, 75, 100], prefix: "$", suffix: "bn", title: "Industry loss from the event" },
+          y: { min: 0, max: 100, ticks: [0, 50, 100], suffix: "%", title: "Principal lost" },
+          series: [{ name: "Payout", tone: "c1", points: [[0, 0], [v.att, 0], [Math.min(100, v.att + v.w), Math.min(100, ((Math.min(100, v.att + v.w) - v.att) / v.w) * 100)], [100, Math.min(100, ((100 - v.att) / v.w) * 100)]] }],
+          marks: [{ x: v.loss, y: r1(lost), tone: "c2", label: "This storm", dx: v.loss > 70 ? -8 : 8, dy: lost > 80 ? 16 : -8, anchor: v.loss > 70 ? "end" : "start" }]
+        },
+        insight
+      };
+    }
+  };
+
+  X.programme = {
+    title: "Design a catastrophe programme",
+    blurb: "Choose a retention and a top, and weigh the cost against the protection.",
+    ask: "An insurer’s modelled hurricane losses are £63m at 1-in-10, £141m at 1-in-50, £283m at 1-in-200 and £447m at 1-in-500. Choose where its catastrophe programme starts and stops, and see what it costs and what it leaves behind. (Illustrative pricing.)",
+    inputs: [
+      { k: "ret", label: "Retention, where cover starts", min: 20, max: 150, step: 10, value: 60, unit: "m" },
+      { k: "top", label: "Top of the programme", min: 150, max: 500, step: 25, value: 300, unit: "m" }
+    ],
+    presets: [
+      { label: "Cheap and thin", v: { ret: 120, top: 200 } },
+      { label: "To the 1-in-200", v: { ret: 60, top: 300 } },
+      { label: "Belt and braces", v: { ret: 30, top: 450 } }
+    ],
+    compute(v, H) {
+      const top = Math.max(v.top, v.ret + 10);
+      const gl = (rp) => 20 * Math.sqrt(rp);
+      const el = 400 * (1 / v.ret - 1 / top);
+      const prem = Math.max(el * 1.8, 0.01 * (top - v.ret));
+      const rps = [10, 50, 200, 500];
+      const rows = rps.map((rp) => {
+        const g = gl(rp);
+        const rec = Math.min(Math.max(g - v.ret, 0), top - v.ret);
+        const kept = Math.min(g, v.ret);
+        const above = Math.max(g - top, 0);
+        return { label: `1-in-${rp} loss`, total: `${H.fmtM(g)} → net ${H.fmtM(kept + above)}`, segs: [[kept, "", "c1"], [rec, "", "c1l"], [above, "", "hatch"]] };
+      });
+      const g200 = gl(200);
+      const net200 = Math.min(g200, v.ret) + Math.max(g200 - top, 0);
+      const protRP = Math.round(Math.pow(top / 20, 2));
+      let insight = `The programme costs about **${H.fmtM(prem)} a year** and is expected to recover ${H.fmtM(el)} a year on average. The difference, ${H.fmtM(prem - el)}, is the price of stability: you pay it every year so that the bad years are bearable.`;
+      insight += top < g200
+        ? `\n\nBut it stops at ${H.fmtM(top)}, below the 1-in-200 loss of ${H.fmtM(g200)}: a 1-in-200 storm would leave ${H.fmtM(g200 - top)} uninsured above the tower, which regulators and rating agencies would notice.`
+        : `\n\nIt protects to about a 1-in-${protRP} event, so the 1-in-200 loss costs the insurer only its ${H.fmtM(v.ret)} retention.`;
+      insight += ` Try lowering the retention: the frequent small events become the reinsurer’s, and the price climbs quickly.`;
+      return {
+        readouts: [["Reinsurance cost", H.fmtM(prem)], ["Net 1-in-200 loss", H.fmtM(net200), net200 > 150 ? "bad" : ""], ["Protected to", `1\u2011in\u2011${protRP}`]],
+        chart: {
+          type: "bars",
+          scale: 460,
+          prefix: "£",
+          suffix: "m",
+          ticks: [0, 150, 300, 450],
+          rows,
+          legend: [["c1", "Retention"], ["c1l", "Recovered"], ["hatch", "Above the programme"]]
+        },
+        insight
+      };
+    }
+  };
+
   window.SLIP_DATA.explore = Object.assign(window.SLIP_DATA.explore || {}, X);
 })();
