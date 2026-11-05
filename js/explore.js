@@ -411,5 +411,136 @@ window.SLIP_DATA = window.SLIP_DATA || {};
     }
   };
 
+  /* ---------------------------------------------------------------- m09 */
+  const gbp = (m) => (Math.abs(m) < 1 ? `£${Math.round(m * 1000).toLocaleString("en-GB")}k` : `£${r2(m).toLocaleString("en-GB")}m`);
+
+  X.average = {
+    title: "Underinsurance and average",
+    blurb: "Insure a building for less than it’s worth and see what happens to every claim.",
+    ask: "A warehouse costs a certain amount to rebuild but is insured for less, under a policy subject to average. Change the value, the sum insured and the size of the loss.",
+    inputs: [
+      { k: "value", label: "True rebuilding value", min: 10, max: 100, step: 5, value: 50, unit: "m" },
+      { k: "si", label: "Sum insured", min: 5, max: 100, step: 5, value: 30, unit: "m" },
+      { k: "loss", label: "Size of the loss", min: 1, max: 100, step: 1, value: 10, unit: "m" }
+    ],
+    presets: [
+      { label: "Fully insured", v: { value: 50, si: 50, loss: 10 } },
+      { label: "Badly underinsured", v: { value: 80, si: 30, loss: 20 } }
+    ],
+    compute(v, H) {
+      const loss = Math.min(v.loss, v.value);
+      const ratio = Math.min(1, v.si / v.value);
+      const paid = Math.min(loss * ratio, v.si);
+      const gap = loss - paid;
+      const insight = ratio >= 1
+        ? `The building is insured for its full value, so the ${H.fmtM(loss)} loss is paid in full. Average only bites when the sum insured falls short of the true value.`
+        : `The building is insured for only **${Math.round(ratio * 100)}% of its value**, so under average only ${Math.round(ratio * 100)}% of each loss is paid: ${gbp(paid)} of the ${H.fmtM(loss)} loss. The insured is treated as its own insurer for the uninsured part.\n\nNotice that a small, partial loss is cut too, not just a total loss. That surprises many clients, and it is why insuring to full value matters.`;
+      return {
+        readouts: [["Insured to value", `${Math.round(ratio * 100)}%`, ratio < 1 ? "bad" : "good"], ["Insurer pays", gbp(paid)], ["Insured bears", gbp(gap), gap > 0.001 ? "bad" : ""]],
+        chart: {
+          type: "bars",
+          scale: 100,
+          ticks: [0, 25, 50, 75, 100],
+          suffix: "%",
+          rows: [
+            { label: "Sum insured ÷ true value", total: `${H.fmtM(v.si)} of ${H.fmtM(v.value)}`, segs: [[ratio * 100, "Insured", "c1"], [100 - ratio * 100, "", "idle"]] },
+            { label: "Share of the loss paid", total: `${gbp(paid)} of ${H.fmtM(loss)}`, segs: [[(paid / loss) * 100, "Paid", "c1"], [(gap / loss) * 100, "", "hatch"]] }
+          ],
+          legend: [["c1", "Covered"], ["hatch", "Borne by the insured"]]
+        },
+        insight
+      };
+    }
+  };
+
+  X.proportionate = {
+    title: "A proportionate reduction",
+    blurb: "Change what the insurer would have charged, and watch the claim shrink.",
+    ask: "An insured carelessly failed to mention a previous fire and paid £100k of premium. Set what the insurer would have charged had it known, the size of the claim, and whether the breach was deliberate.",
+    inputs: [
+      { k: "would", label: "Premium it would have charged", min: 100, max: 300, step: 10, value: 150, unit: "k" },
+      { k: "claim", label: "The claim", min: 0.1, max: 5, step: 0.1, value: 1, unit: "m" },
+      { k: "delib", label: "Deliberate or reckless?", min: 0, max: 1, step: 1, value: 0, show: (x) => (x ? "Yes" : "No") }
+    ],
+    compute(v) {
+      const share = v.delib ? 0 : 100 / v.would;
+      const paid = v.claim * share;
+      let insight;
+      if (v.delib) insight = `A deliberate or reckless breach: the insurer may avoid the policy, refuse all claims and **keep the £100k premium**. The ${gbp(v.claim)} claim isn’t paid at all.`;
+      else if (v.would === 100) insight = `The insurer would have charged the same premium, so the omission made no difference to the price and the ${gbp(v.claim)} claim is paid in full, unless it would have changed the terms instead.`;
+      else insight = `Told about the fire, the insurer would have charged £${v.would}k, so it received only 100 ÷ ${v.would} = **${Math.round(share * 100)}%** of the premium it should have. It pays the same ${Math.round(share * 100)}% of the claim: ${gbp(paid)} of ${gbp(v.claim)}.\n\nUnder the old law it could have avoided the whole policy and paid nothing. That is the shift from all-or-nothing to proportionate.`;
+      return {
+        readouts: [["Share paid", `${Math.round(share * 100)}%`, v.delib ? "bad" : ""], ["Paid", gbp(paid)], ["Cut", gbp(v.claim - paid), v.claim - paid > 0.001 ? "bad" : ""]],
+        chart: {
+          type: "bars",
+          scale: 100,
+          ticks: [0, 25, 50, 75, 100],
+          suffix: "%",
+          rows: [
+            { label: "Premium charged ÷ premium it should have been", total: v.delib ? "Avoided" : `£100k of £${v.would}k`, segs: [[v.delib ? 0 : share * 100, "", "c2"], [v.delib ? 100 : 100 - share * 100, "", "idle"]] },
+            { label: "Share of the claim paid", total: `${gbp(paid)} of ${gbp(v.claim)}`, segs: [[share * 100, share > 0.3 ? "Paid" : "", "c1"], [100 - share * 100, "", "hatch"]] }
+          ],
+          legend: [["c1", "Paid"], ["hatch", "Cut"]]
+        },
+        insight
+      };
+    }
+  };
+
+  const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const mon = (i) => `${MONTHS[i % 12]} ${2024 + Math.floor(i / 12)}`;
+  X.triggers = {
+    title: "Which policy pays?",
+    blurb: "Move the loss and the claim through time and see which policy year responds.",
+    ask: "A firm buys annual cover every January. Something goes wrong, and a claim is made later. Move the two dates, and choose whether the firm reset its retroactive date when it changed insurer in 2026.",
+    inputs: [
+      { k: "loss", label: "When it happened", min: 0, max: 35, step: 1, value: 14, show: mon },
+      { k: "delay", label: "Then the claim is made", min: 0, max: 24, step: 1, value: 13, show: (x) => (x === 0 ? "At once" : `${x} month${x === 1 ? "" : "s"} later`) },
+      { k: "retro", label: "Retroactive date on the 2026 policy", min: 0, max: 1, step: 1, value: 0, show: (x) => (x ? "Reset to 2026" : "Kept from 2024") }
+    ],
+    presets: [
+      { label: "A fire", v: { loss: 14, delay: 0 } },
+      { label: "Bad advice", v: { loss: 14, delay: 13, retro: 0 } },
+      { label: "The gap", v: { loss: 14, delay: 13, retro: 1 } }
+    ],
+    compute(v) {
+      const claimM = v.loss + v.delay;
+      const loY = 2024 + Math.floor(v.loss / 12);
+      const cmY = 2024 + Math.floor(claimM / 12);
+      const cmOff = cmY > 2027;
+      const gap = !cmOff && v.retro && cmY >= 2026 && loY < 2026;
+      const rows = [2024, 2025, 2026, 2027].map((y) => {
+        const lo = y === loY, cm = y === cmY && !cmOff;
+        let tone = "idle";
+        if (lo && cm) tone = gap ? "c1" : "c3";
+        else if (lo) tone = "c1";
+        else if (cm) tone = gap ? "hatch" : "c2";
+        return { id: `p${y}`, label: `${y} policy`, segs: [[y, y + 1, tone, ""]] };
+      });
+      const lx = 2024 + v.loss / 12 + 1 / 24;
+      const cx = 2024 + claimM / 12 + 1 / 24;
+      const markers = Math.abs(cx - lx) < 0.35 ? [[lx, "Loss and claim"]] : [[lx, "Loss"], [Math.min(cx, 2027.98), "Claim"]];
+      let insight;
+      if (loY === cmY) insight = `The loss and the claim fall in the same policy year, so both triggers point to the **${loY} policy**. Triggers only matter when time separates the event from the claim.`;
+      else {
+        insight = `It happened in ${mon(v.loss)}, but the claim came in ${mon(claimM)}. A losses-occurring policy looks at the loss date, so the **${loY} policy** pays. A claims-made policy looks at the claim date, so the **${cmOff ? "(not yet bought)" : cmY} policy** pays.`;
+        if (gap) insight += `\n\nBut the 2026 policy’s retroactive date was reset to January 2026, and the work was done in ${loY}. The old policy has expired and the new one excludes earlier work: **no one pays**. That is the classic gap in cover.`;
+      }
+      return {
+        readouts: [["Losses occurring", `${loY} policy`, "c1"], ["Claims made", gap ? "Not covered" : cmOff ? "Beyond 2027" : `${cmY} policy`, gap ? "bad" : "c2"]],
+        chart: {
+          type: "timeline",
+          from: 2024,
+          to: 2028,
+          ticks: [2024, 2025, 2026, 2027, 2028],
+          markers,
+          legend: [["c1", "Losses occurring"], ["c2", "Claims made"], ["c3", "Both"], ["hatch", "Excluded"]],
+          rows
+        },
+        insight
+      };
+    }
+  };
+
   window.SLIP_DATA.explore = Object.assign(window.SLIP_DATA.explore || {}, X);
 })();
