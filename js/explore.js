@@ -412,7 +412,11 @@ window.SLIP_DATA = window.SLIP_DATA || {};
   };
 
   /* ---------------------------------------------------------------- m09 */
-  const gbp = (m) => (Math.abs(m) < 1 ? `£${Math.round(m * 1000).toLocaleString("en-GB")}k` : `£${r2(m).toLocaleString("en-GB")}m`);
+  const gbp = (m) => {
+    if (Math.abs(m) < 0.0005) return "£0";
+    if (Math.abs(m) < 1) return `${m < 0 ? "−" : ""}£${Math.round(Math.abs(m) * 1000).toLocaleString("en-GB")}k`;
+    return `${m < 0 ? "−" : ""}£${r1(Math.abs(m)).toLocaleString("en-GB")}m`;
+  };
 
   X.average = {
     title: "Underinsurance and average",
@@ -758,6 +762,85 @@ window.SLIP_DATA = window.SLIP_DATA || {};
             { name: "With claims inflation", tone: "c2", points: actual }
           ],
           marks: [{ x: n, y: r1(ult), label: `£${Math.round(ult)}m`, dx: -8, dy: -10, anchor: "end", tone: "c2" }]
+        },
+        insight
+      };
+    }
+  };
+
+  /* ---------------------------------------------------------------- m08 */
+  X.ibnr = {
+    title: "Watch a year’s claims develop",
+    blurb: "Move through time and see IBNR turn into reported and then paid claims.",
+    ask: "A book of policies will eventually cost £60m in claims. Move forward in time, and change the type of business, to see how much has been paid, how much is known about, and how much is still IBNR.",
+    inputs: [
+      { k: "t", label: "Time since the policies began", min: 0.5, max: 10, step: 0.5, value: 2, unit: "yr" },
+      { k: "tail", label: "Type of business", min: 0, max: 100, step: 10, value: 20, show: (x) => (x <= 20 ? "Short tail, like property" : x >= 80 ? "Long tail, like liability" : "In between") }
+    ],
+    presets: [
+      { label: "Property, year 1", v: { t: 1, tail: 0 } },
+      { label: "Liability, year 1", v: { t: 1, tail: 100 } },
+      { label: "Liability, year 5", v: { t: 5, tail: 100 } }
+    ],
+    compute(v, H) {
+      const U = 60;
+      const tr = 0.5 + (3 * v.tail) / 100, tp = 1 + (5 * v.tail) / 100;
+      const rep = (t) => 1 - Math.exp(-t / tr), pay = (t) => 1 - Math.exp(-t / tp);
+      const paid = U * pay(v.t), inc = U * rep(v.t), cs = inc - paid, ib = U - inc;
+      const pts = (f) => Array.from({ length: 21 }, (_, i) => [i / 2, r1(f(i / 2) * 100)]);
+      const kind = v.tail <= 20 ? "this property-like book" : v.tail >= 80 ? "this liability book" : "this book";
+      const insight = `${v.t} year${v.t === 1 ? "" : "s"} in, ${kind} has paid ${gbp(paid)} and knows of another ${gbp(cs)} in open claims. That leaves **${gbp(ib)} of IBNR**: ${Math.round((ib / U) * 100)}% of the ultimate is claims nobody has reported yet.\n\n${v.tail >= 60 ? "With a long tail, IBNR dominates for years. The reserve rests mostly on actuarial projection rather than known claims, which is exactly why long-tail reserving is so uncertain." : "With a short tail, claims are reported quickly, so IBNR shrinks fast and the estimate soon rests on known claims."}`;
+      return {
+        readouts: [["Paid", gbp(paid), "c1"], ["Case reserves", gbp(cs), "c2"], ["IBNR", gbp(ib), ib > 30 ? "bad" : ""]],
+        chart: {
+          type: "line",
+          title: "Claims development",
+          height: 210,
+          x: { min: 0, max: 10, ticks: [0, 2, 4, 6, 8, 10], suffix: "", title: "Years since the policies began" },
+          y: { min: 0, max: 100, ticks: [0, 25, 50, 75, 100], suffix: "%", title: "Share of the £60m ultimate" },
+          refs: [{ x: v.t, label: "Now" }],
+          series: [
+            { name: "Incurred (paid + case)", tone: "c2", points: pts(rep) },
+            { name: "Paid", tone: "c1", points: pts(pay) }
+          ],
+          marks: [{ x: v.t, y: r1(rep(v.t) * 100), tone: "c2" }, { x: v.t, y: r1(pay(v.t) * 100), tone: "c1" }]
+        },
+        insight
+      };
+    }
+  };
+
+  X.contribution = {
+    title: "Two policies, one loss",
+    blurb: "Overlap two policies and see how contribution shares the loss.",
+    ask: "A loss is covered by two policies with different insurers. Change the loss and each policy’s limit, and see how the insurers share it so the insured recovers only once.",
+    inputs: [
+      { k: "loss", label: "The loss", min: 1, max: 20, step: 0.5, value: 8, unit: "m" },
+      { k: "a", label: "Policy A’s limit", min: 1, max: 20, step: 0.5, value: 10, unit: "m" },
+      { k: "b", label: "Policy B’s limit", min: 1, max: 20, step: 0.5, value: 5, unit: "m" }
+    ],
+    compute(v) {
+      const ia = Math.min(v.loss, v.a), ib = Math.min(v.loss, v.b);
+      const both = ia + ib;
+      const sa = both >= v.loss ? (v.loss * ia) / both : ia;
+      const sb = both >= v.loss ? (v.loss * ib) / both : ib;
+      const gap = v.loss - sa - sb;
+      const p = (x) => (x / v.loss) * 100;
+      const insight = both >= v.loss
+        ? `On its own, A would pay ${gbp(ia)} and B ${gbp(ib)}: together ${gbp(both)} for a ${gbp(v.loss)} loss. So they share in proportion to those **independent liabilities**: A pays ${Math.round((ia / both) * 100)}%, ${gbp(sa)}, and B ${Math.round((ib / both) * 100)}%, ${gbp(sb)}.\n\nThe insured recovers its ${gbp(v.loss)} once, not ${gbp(both)}. That is indemnity at work.`
+        : `Even together the two policies only provide ${gbp(both)}, less than the ${gbp(v.loss)} loss. Each pays its full limit and the insured bears the remaining ${gbp(gap)}: contribution can’t create cover that isn’t there.`;
+      return {
+        readouts: [["A pays", gbp(sa), "c1"], ["B pays", gbp(sb), "c2"], ["Insured bears", gbp(gap), gap > 0.001 ? "bad" : "good"]],
+        chart: {
+          type: "bars",
+          scale: 100,
+          ticks: [0, 25, 50, 75, 100],
+          suffix: "%",
+          rows: [
+            { label: "What each would pay alone", total: gbp(both), segs: [[(ia / both) * 100, (ia / both) * 100 > 22 ? `A ${gbp(ia)}` : "", "c1l"], [(ib / both) * 100, (ib / both) * 100 > 22 ? `B ${gbp(ib)}` : "", "c1m"]] },
+            { label: "How the loss is shared", total: gbp(v.loss), segs: [[p(sa), p(sa) > 18 ? "A" : "", "c1"], [p(sb), p(sb) > 18 ? "B" : "", "c2"], [p(gap), "", "hatch"]] }
+          ],
+          legend: [["c1", "Insurer A"], ["c2", "Insurer B"], ["hatch", "Uninsured"]]
         },
         insight
       };
