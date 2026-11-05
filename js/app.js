@@ -1204,9 +1204,19 @@
      Each model (js/explore.js) declares sliders and a compute function that returns a
      chart, a few headline numbers and a sentence or two on cause and effect. */
   const XV = {};
-  const xVals = (id) => XV[id] || (XV[id] = Object.fromEntries(XS[id].inputs.map((i) => [i.k, i.value])));
+  /* a slider can also step through a list of uneven values, such as claims from $1m to $5bn */
+  const nearest = (arr, v) => arr.reduce((b, x, i) => (Math.abs(x - v) < Math.abs(arr[b] - v) ? i : b), 0);
+  const slotOf = (inp, v) => (inp.values ? nearest(inp.values, v) : v);
+  const xVals = (id) => XV[id] || (XV[id] = Object.fromEntries(XS[id].inputs.map((i) => [i.k, slotOf(i, i.value)])));
+  const xReal = (id) => {
+    const v = xVals(id);
+    return Object.fromEntries(XS[id].inputs.map((i) => [i.k, i.values ? i.values[v[i.k]] : v[i.k]]));
+  };
   const fmtNum = (v) => (+v).toLocaleString("en-GB", { maximumFractionDigits: 2 });
-  const money = (v) => (Math.abs(v) >= 1000 ? `${v < 0 ? "−" : ""}£${fmtNum(Math.abs(v) / 1000)}bn` : fmtM(v));
+  const money = (v) => {
+    if (Math.abs(v) >= 1000) return `${v < 0 ? "−" : ""}£${fmtNum(Math.abs(v) / 1000)}bn`;
+    return fmtM(Math.abs(v) >= 100 ? Math.round(v) : v);
+  };
   const UNIT = {
     pct: (v) => `${fmtNum(v)}%`,
     m: (v) => money(v),
@@ -1216,13 +1226,17 @@
     yr: (v) => `${v} year${+v === 1 ? "" : "s"}`,
     mo: (v) => `${v} month${+v === 1 ? "" : "s"}`,
     h: (v) => `${v} hours`,
+    usd: (v) => (Math.abs(v) >= 1000 ? `US$${fmtNum(v / 1000)}bn` : `US$${fmtNum(v)}m`),
     n: (v) => fmtNum(v)
   };
-  const showIn = (inp, v) => (inp.show ? inp.show(v) : (UNIT[inp.unit] || UNIT.n)(v));
+  const showIn = (inp, raw) => {
+    const v = inp.values ? inp.values[raw] : raw;
+    return inp.show ? inp.show(v) : (UNIT[inp.unit] || UNIT.n)(v);
+  };
   const XH = { fmtM: money, fmtK, fmtNum, pct: (v, d = 1) => `${(+v).toFixed(d)}%`, clamp: (v, a, b) => Math.min(b, Math.max(a, v)) };
 
   function xOut(id) {
-    try { return XS[id].compute(xVals(id), XH) || {}; }
+    try { return XS[id].compute(xReal(id), XH) || {}; }
     catch (err) {
       if (window.console) console.error(err);
       return { insight: "This model couldn’t run with these values." };
@@ -1230,7 +1244,7 @@
   }
   const xChartHTML = (id, out) => (out.chart ? figBody(`x-${id}`, out.chart) : "");
   const xReadHTML = (out) => ((out.readouts || []).length
-    ? `<dl class="x-read">${out.readouts.map(([k, v, tone]) => `<div${tone ? ` class="t-${tone}"` : ""}><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl>`
+    ? `<dl class="x-read n${out.readouts.length}">${out.readouts.map(([k, v, tone]) => `<div${tone ? ` class="t-${tone}"` : ""}><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl>`
     : "");
 
   function xVisualHTML(id) {
@@ -1244,7 +1258,7 @@
     const out = xOut(id);
     const sliders = X.inputs.map((inp) => `<div class="slider">
       <label for="x-${id}-${inp.k}"><span>${esc(inp.label)}</span><output id="x-${id}-${inp.k}-v">${esc(showIn(inp, v[inp.k]))}</output></label>
-      <input type="range" id="x-${id}-${inp.k}" data-in="x" data-x="${id}" data-k="${inp.k}" min="${inp.min}" max="${inp.max}" step="${inp.step || 1}" value="${v[inp.k]}">
+      <input type="range" id="x-${id}-${inp.k}" data-in="x" data-x="${id}" data-k="${inp.k}" min="${inp.values ? 0 : inp.min}" max="${inp.values ? inp.values.length - 1 : inp.max}" step="${inp.values ? 1 : inp.step || 1}" value="${v[inp.k]}">
     </div>`).join("");
     const presets = X.presets
       ? `<div class="presets" role="group" aria-label="Examples">${X.presets.map((p, i) => `<button type="button" data-act="x-preset" data-x="${id}" data-p="${i}">${esc(p.label)}</button>`).join("")}</div>`
@@ -1981,7 +1995,8 @@
       const X = XS[el.dataset.x];
       const p = X && X.presets && X.presets[+el.dataset.p];
       if (!p) return;
-      Object.assign(xVals(el.dataset.x), p.v);
+      const v = xVals(el.dataset.x);
+      X.inputs.forEach((inp) => { if (p.v[inp.k] !== undefined) v[inp.k] = slotOf(inp, p.v[inp.k]); });
       xRefresh(el.dataset.x);
     },
     complete(el) {
