@@ -1108,5 +1108,245 @@ window.SLIP_DATA = window.SLIP_DATA || {};
     }
   };
 
+  /* ---------------------------------------------------------------- m12 */
+  X["sliding-scale"] = {
+    title: "A sliding scale commission",
+    tab: "Sliding scale",
+    blurb: "Move the final loss ratio and watch the commission slide between its floor and cap.",
+    ask: "A quota share pays a provisional commission at a 60% loss ratio, moving one point of commission for each point of loss ratio, within five points either way. Move the final loss ratio and the provisional commission.",
+    inputs: [
+      { k: "lr", label: "Final loss ratio", min: 40, max: 90, step: 1, value: 57, unit: "pct" },
+      { k: "prov", label: "Commission at a 60% loss ratio", min: 25, max: 35, step: 1, value: 30, unit: "pct" }
+    ],
+    presets: [
+      { label: "57%", v: { lr: 57 } },
+      { label: "70%", v: { lr: 70 } },
+      { label: "48%", v: { lr: 48 } }
+    ],
+    compute(v) {
+      const lo = v.prov - 5, hi = v.prov + 5;
+      const comm = Math.min(hi, Math.max(lo, v.prov + (60 - v.lr)));
+      const margin = 100 - v.lr - comm - 5;
+      let insight;
+      if (comm === hi) insight = `At ${v.lr}% the scale has hit its **cap of ${hi}%**. The cedant is rewarded for a good result, but below ${60 - 5}% it earns nothing more; the reinsurer keeps the extra profit.`;
+      else if (comm === lo) insight = `At ${v.lr}% the scale has hit its **floor of ${lo}%**. Above ${60 + 5}%, every further point of loss ratio falls on the reinsurer alone: its margin is now ${r1(margin)}%.`;
+      else insight = `At ${v.lr}% the commission slides to **${comm}%**, ${comm >= v.prov ? `${comm - v.prov} point${comm - v.prov === 1 ? "" : "s"} above` : `${v.prov - comm} point${v.prov - comm === 1 ? "" : "s"} below`} the provisional ${v.prov}%.\n\nNotice that inside the band the reinsurer’s margin hardly moves: commission and loss ratio move together, so the cedant shares in its own results. That is the whole point of a sliding scale.`;
+      return {
+        readouts: [["Commission paid", `${comm}%`, "c1"], ["Reinsurer’s margin", `${r1(margin)}%`, margin < 0 ? "bad" : "good"]],
+        chart: {
+          type: "line",
+          title: "Commission by final loss ratio",
+          height: 200,
+          x: { min: 40, max: 90, ticks: [40, 50, 60, 70, 80, 90], suffix: "%", title: "Final loss ratio" },
+          y: { min: 15, max: 45, ticks: [20, 30, 40], suffix: "%", title: "Commission" },
+          refs: [{ x: 60, label: "Expected" }],
+          series: [{ name: "Commission", tone: "c1", points: [[40, hi], [55, hi], [65, lo], [90, lo]] }],
+          marks: [{ x: v.lr, y: comm, tone: "c2", label: `${comm}%`, dx: 8, dy: -8 }]
+        },
+        insight
+      };
+    }
+  };
+
+  X["loss-corridor"] = {
+    title: "A loss corridor",
+    tab: "Loss corridor",
+    blurb: "Push the loss ratio through a corridor and see who pays for it.",
+    ask: "A 50% quota share has a loss corridor: between two loss ratios, the cedant keeps all the losses before the reinsurer resumes its share. Move the year’s loss ratio and the corridor.",
+    inputs: [
+      { k: "lr", label: "Year’s gross loss ratio", min: 40, max: 120, step: 5, value: 85, unit: "pct" },
+      { k: "a", label: "Corridor starts at", min: 60, max: 85, step: 5, value: 70, unit: "pct" },
+      { k: "w", label: "Corridor width", min: 0, max: 20, step: 5, value: 10, show: (x) => (x ? `${x} points` : "No corridor") }
+    ],
+    compute(v) {
+      const below = Math.min(v.lr, v.a);
+      const inC = Math.min(Math.max(v.lr - v.a, 0), v.w);
+      const above = Math.max(v.lr - v.a - v.w, 0);
+      const reLoss = 0.5 * below + 0.5 * above;
+      const ceLoss = v.lr - reLoss;
+      const reLR = reLoss / 0.5, ceLR = ceLoss / 0.5;
+      const scale = Math.max(100, Math.ceil(v.lr / 10) * 10);
+      const insight = inC === 0 && v.lr <= v.a
+        ? `At ${v.lr}% the corridor isn’t reached, so the two share every loss half and half: each has a ${v.lr}% loss ratio.`
+        : `The first ${v.a}% of losses is shared half and half. Then the cedant pays **all** of the next ${inC} points, inside the corridor${above ? `, before the reinsurer resumes its 50% share of the remaining ${above} points` : ""}.\n\nThe reinsurer’s loss ratio is ${r1(reLR)}%, the cedant’s ${r1(ceLR)}%. A corridor gives the cedant a real stake in moderately poor years, without exposing it to the catastrophic ones.`;
+      return {
+        readouts: [["Reinsurer’s loss ratio", `${r1(reLR)}%`, reLR > 100 ? "bad" : ""], ["Cedant’s loss ratio", `${r1(ceLR)}%`, ceLR > 100 ? "bad" : ""]],
+        chart: {
+          type: "bars",
+          scale,
+          suffix: "%",
+          ticks: [0, 50, 100].filter((x) => x <= scale),
+          rows: [
+            { label: "Losses paid by the reinsurer", total: `${r1(reLoss)} pts`, segs: [[0.5 * below, "", "c1"], [0, "", "c2"], [0.5 * above, "", "c3"]] },
+            { label: "Losses paid by the cedant", total: `${r1(ceLoss)} pts`, segs: [[0.5 * below, "", "c1"], [inC, "", "c2"], [0.5 * above, "", "c3"]] }
+          ],
+          legend: [["c1", `Below ${v.a}%: shared`], ["c2", "In the corridor"], ["c3", "Above it: shared"]]
+        },
+        insight
+      };
+    }
+  };
+
+  const LOSSES = { 2020: [6.5, 4.4], 2021: [4.1], 2022: [9.2, 5.6], 2023: [4.8, 3.9], 2024: [6.1] };
+  const PREMS = { 2020: 40, 2021: 42, 2022: 44, 2023: 46, 2024: 48 };
+  X["burning-cost"] = {
+    title: "Burning cost and inflation",
+    blurb: "Raise claims inflation and watch old losses pierce the retention.",
+    ask: "Here are a cedant’s large losses for five years, at the values they settled for. Restate them for claims inflation and apply them to a £10m layer. Change the inflation rate and the retention.",
+    inputs: [
+      { k: "inf", label: "Claims inflation a year", min: 0, max: 12, step: 1, value: 5, unit: "pct" },
+      { k: "ret", label: "Retention of the layer", min: 3, max: 8, step: 0.5, value: 5, unit: "m" }
+    ],
+    compute(v) {
+      const burnAt = (inf) => {
+        let L = 0;
+        const rows = Object.keys(LOSSES).map((y) => {
+          const f = Math.pow(1 + inf / 100, 2025 - y);
+          const lay = LOSSES[y].reduce((a, x) => a + Math.min(Math.max(x * f - v.ret, 0), 10), 0);
+          L += lay;
+          return { y, lay, burn: (lay / PREMS[y]) * 100 };
+        });
+        return { rows, burn: (L / 220) * 100, total: L };
+      };
+      const now = burnAt(v.inf), flat = burnAt(0);
+      const rate = now.burn / 0.75;
+      const gear = flat.burn > 0 ? now.burn / flat.burn : 0;
+      const groundUp = (Math.pow(1 + v.inf / 100, 5) - 1) * 100;
+      const insight = v.inf === 0
+        ? `With no inflation, the old losses are taken at face value: the layer would have burned ${gbp(flat.total)} over five years, a burning cost of **${r1(flat.burn)}%** of premium.`
+        : `At ${v.inf}% a year, the oldest losses grow by up to ${Math.round(groundUp)}%, but the burning cost rises from ${r1(flat.burn)}% to **${r1(now.burn)}%**${gear ? `, ${r1(gear)} times as much` : ""}. Losses that sat just under the ${gbp(v.ret)} retention now pierce it.\n\nThat gearing is why excess of loss reinsurers watch claims inflation so closely: a layer feels inflation far more than the business beneath it.`;
+      return {
+        readouts: [["Burning cost", `${r1(now.burn)}%`, "c1"], ["Rate after loading", `${r1(rate)}%`], ["Ground-up growth", `up to +${Math.round(groundUp)}%`]],
+        chart: {
+          type: "bars",
+          scale: Math.max(12, Math.ceil(Math.max(...now.rows.map((r) => r.burn)) / 4) * 4),
+          suffix: "%",
+          mark: [now.burn, `Average ${r1(now.burn)}%`],
+          rows: now.rows.map((r) => ({ label: `${r.y} · premium £${PREMS[r.y]}m`, total: `${gbp(r.lay)} · ${r1(r.burn)}%`, segs: [[r.burn, "", "c1"]] }))
+        },
+        insight
+      };
+    }
+  };
+
+  X["ep-layer"] = {
+    title: "Price a catastrophe layer",
+    blurb: "Slide a layer up the EP curve and watch expected loss, multiple and rate on line.",
+    ask: "A cedant’s modelled hurricane losses follow the curve below: £63m at 1-in-10, £200m at 1-in-100, £447m at 1-in-500. Place a layer on it and see how a reinsurer might price it. (Illustrative curve and multiples.)",
+    inputs: [
+      { k: "att", label: "Attachment", min: 20, max: 400, step: 10, value: 50, unit: "m" },
+      { k: "lim", label: "Limit", min: 25, max: 300, step: 25, value: 50, unit: "m" }
+    ],
+    presets: [
+      { label: "Low layer", v: { att: 40, lim: 50 } },
+      { label: "High layer", v: { att: 200, lim: 100 } }
+    ],
+    compute(v, H) {
+      const a = v.att, b = v.att + v.lim;
+      const el = 400 * (1 / a - 1 / b);
+      const elPct = (el / v.lim) * 100;
+      const mult = 1.5 + 2.5 * (1 - Math.min(1, elPct / 15));
+      const prem = el * mult;
+      const rol = (prem / v.lim) * 100;
+      const rpA = Math.pow(a / 20, 2), rpB = Math.pow(b / 20, 2);
+      const rp = (x) => (x >= 1000 ? "1,000+" : Math.round(x).toLocaleString("en-GB"));
+      const curve = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000].map((x) => [x, Math.round(20 * Math.sqrt(x))]);
+      const insight = `The layer starts paying at about a **1-in-${rp(rpA)}** loss and is used up at 1-in-${rp(rpB)}. Its expected loss is ${H.fmtM(el)} a year, ${r1(elPct)}% of the limit.\n\nAt a multiple of ${r1(mult)}, the premium is ${H.fmtM(prem)}: a rate on line of **${r1(rol)}%**. Move the layer higher and the expected loss shrinks fast, but the multiple climbs, because the reinsurer must hold capital against a layer that, when hit, is hit in full.`;
+      return {
+        readouts: [["Expected loss", H.fmtM(el)], ["Share of limit", `${r1(elPct)}%`], ["Multiple", `${r1(mult)}×`], ["Rate on line", `${r1(rol)}%`, "c1"]],
+        chart: {
+          type: "line",
+          title: "The cedant’s hurricane EP curve",
+          height: 220,
+          x: { min: 1, max: 1000, log: true, ticks: [1, 10, 100, 1000], labels: ["1", "10", "100", "1,000"], title: "Return period, years (log scale)" },
+          y: { min: 0, max: 700, ticks: [0, 200, 400, 600], prefix: "£", suffix: "m", title: "Loss" },
+          bands: [{ from: a, to: Math.min(b, 700), tone: "c2", label: "The layer" }],
+          series: [{ name: "Modelled loss", tone: "c1", points: curve }]
+        },
+        insight
+      };
+    }
+  };
+
+  X["hours-clause"] = {
+    title: "One storm or two?",
+    blurb: "Stretch a storm past the hours clause and see whether two events help or hurt.",
+    ask: "A catastrophe layer pays per event, and a 72-hour clause defines an event. Losses build up evenly while the storm lasts. Change its length and size, and the layer, and compare one event with several.",
+    inputs: [
+      { k: "d", label: "Length of the storm", min: 24, max: 144, step: 12, value: 96, unit: "h" },
+      { k: "L", label: "Total loss from the storm", min: 50, max: 300, step: 10, value: 150, unit: "m" },
+      { k: "ret", label: "Retention per event", min: 10, max: 80, step: 5, value: 40, unit: "m" },
+      { k: "lim", label: "Limit per event", min: 50, max: 150, step: 10, value: 100, unit: "m" }
+    ],
+    presets: [
+      { label: "Splitting hurts", v: { d: 96, L: 150, ret: 40, lim: 100 } },
+      { label: "Splitting helps", v: { d: 120, L: 300, ret: 40, lim: 100 } }
+    ],
+    compute(v, H) {
+      const pay = (x) => Math.min(Math.max(x - v.ret, 0), v.lim);
+      const n = Math.ceil(v.d / 72);
+      const parts = Array.from({ length: n }, (_, i) => (v.L * (Math.min(v.d, 72 * (i + 1)) - 72 * i)) / v.d);
+      const split = parts.reduce((a, x) => a + pay(x), 0);
+      const one = pay(v.L);
+      const diff = split - one;
+      const row = (label, x) => ({ label, total: `${H.fmtM(x)} → ${H.fmtM(pay(x))} recovered`, segs: [[Math.min(x, v.ret), "", "neutral"], [pay(x), "", "c1"], [Math.max(x - v.ret - v.lim, 0), "", "hatch"]] });
+      const rows = n > 1
+        ? parts.map((x, i) => row(`Event ${i + 1} · hours ${72 * i}–${Math.min(v.d, 72 * (i + 1))}`, x)).concat([row("If it were one event", v.L)])
+        : [row(`One event · ${v.d} hours`, v.L)];
+      let insight;
+      if (n === 1) insight = `The storm lasts ${v.d} hours, within the 72-hour clause, so it is **one event**: one retention, one limit, a recovery of ${H.fmtM(one)}.`;
+      else insight = `The storm lasts ${v.d} hours, longer than the 72-hour clause, so it counts as **${n} events**: ${n} retentions, but also ${n} limits. The cedant recovers ${H.fmtM(split)}, against ${H.fmtM(one)} if it were one event: ${diff >= 0 ? `**${H.fmtM(diff)} more**, because the extra limit outweighs the extra retention` : `**${H.fmtM(-diff)} less**, because the later event barely clears its own retention`}.\n\nThat is why aggregation is fought over: the same storm can be worth very different sums depending on how many events it is.`;
+      return {
+        readouts: [["Events", String(n)], ["Recovered", H.fmtM(split), "c1"], ["Versus one event", `${diff >= 0 ? "+" : "−"}${H.fmtM(Math.abs(diff))}`, diff > 0.01 ? "good" : diff < -0.01 ? "bad" : ""]],
+        chart: {
+          type: "bars",
+          scale: Math.max(v.L, v.ret + v.lim) * 1.04,
+          prefix: "£",
+          suffix: "m",
+          ticks: [0, 100, 200, 300].filter((x) => x <= Math.max(v.L, v.ret + v.lim)),
+          rows,
+          legend: [["neutral", "Retention"], ["c1", "Recovered"], ["hatch", "Above the limit"]]
+        },
+        insight
+      };
+    }
+  };
+
+  X.commutation = {
+    title: "Price a commutation",
+    blurb: "Change interest rates and the price of certainty, and watch the clean-break payment move.",
+    ask: "A reinsurer expects to pay £20m more in claims on an old casualty treaty, spread evenly over the coming years. Both sides want a clean break. Change the timing, interest rates and the premium the reinsurer will pay for certainty.",
+    inputs: [
+      { k: "E", label: "Claims still expected", min: 5, max: 50, step: 1, value: 20, unit: "m" },
+      { k: "n", label: "Years over which they’d be paid", min: 1, max: 20, step: 1, value: 8, unit: "yr" },
+      { k: "r", label: "Interest rate", min: 0, max: 8, step: 0.5, value: 4, unit: "pct" },
+      { k: "m", label: "Extra paid for certainty", min: 0, max: 30, step: 5, value: 10, unit: "pct" }
+    ],
+    compute(v, H) {
+      let pv = 0;
+      for (let t = 1; t <= v.n; t++) pv += v.E / v.n / Math.pow(1 + v.r / 100, t - 0.5);
+      const pay = pv * (1 + v.m / 100);
+      const insight = `Paid over ${v.n} year${v.n === 1 ? "" : "s"}, the ${gbp(v.E)} of claims is worth ${gbp(pv)} today at ${pc(v.r)} interest. The reinsurer offers **${gbp(pay)}**, ${v.m}% above that best estimate, to be rid of the uncertainty, the capital and the administration.\n\nNow raise the interest rate: future claims are worth less today, so the payment falls. That is why legacy and commutation deals tend to flourish when rates rise.`;
+      return {
+        readouts: [["Present value", gbp(pv)], ["Commutation payment", gbp(pay), "c1"], ["Versus nominal claims", `${Math.round((pay / v.E - 1) * 100)}%`]],
+        chart: {
+          type: "waterfall",
+          prefix: "£",
+          suffix: "m",
+          dp: 1,
+          legend: [["c1", "Adds"], ["c2", "Takes away"], ["total", "Total"]],
+          steps: [
+            { label: "Claims still expected", value: v.E },
+            { label: "Discount for time", value: pv - v.E },
+            { label: "Present value", total: true },
+            { label: "Price of certainty", value: pay - pv },
+            { label: "Commutation payment", total: true }
+          ]
+        },
+        insight
+      };
+    }
+  };
+
   window.SLIP_DATA.explore = Object.assign(window.SLIP_DATA.explore || {}, X);
 })();
