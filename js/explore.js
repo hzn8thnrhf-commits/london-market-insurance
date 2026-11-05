@@ -1348,5 +1348,179 @@ window.SLIP_DATA = window.SLIP_DATA || {};
     }
   };
 
+  /* ---------------------------------------------------------------- m10 */
+  const SEASON = [4, 4, 4, 4, 4, 8, 10, 16, 20, 14, 6, 6];
+  X["earned-premium"] = {
+    title: "Earn the premium",
+    blurb: "Move through the policy year and watch unearned premium turn into earned.",
+    ask: "A twelve-month policy costs £120k. Choose when it starts, how far through the year we are, and whether it earns evenly or with the hurricane season.",
+    inputs: [
+      { k: "start", label: "Policy starts", min: 0, max: 11, step: 1, value: 9, show: (x) => `1 ${MONTHS[x]}` },
+      { k: "m", label: "Months of cover given so far", min: 0, max: 12, step: 1, value: 3, unit: "mo" },
+      { k: "season", label: "Earning pattern", min: 0, max: 1, step: 1, value: 0, show: (x) => (x ? "Hurricane season" : "Even") }
+    ],
+    presets: [
+      { label: "1 Oct, at 31 Dec", v: { start: 9, m: 3, season: 0 } },
+      { label: "Hurricane cover, 30 Jun", v: { start: 0, m: 6, season: 1 } },
+      { label: "Hurricane cover, 30 Nov", v: { start: 0, m: 11, season: 1 } }
+    ],
+    compute(v) {
+      const w = Array.from({ length: 12 }, (_, i) => (v.season ? SEASON[(v.start + i) % 12] : 100 / 12));
+      const tot = w.reduce((a, b) => a + b, 0);
+      const earnedPct = w.slice(0, v.m).reduce((a, b) => a + b, 0) / tot;
+      const earned = 120 * earnedPct;
+      const segs = w.map((x, i) => [(x / tot) * 100, (x / tot) * 100 > 9 ? MONTHS[(v.start + i) % 12] : "", i < v.m ? "c1" : "c1l"]);
+      const insight = v.m === 0
+        ? `The policy has just started: all £120k is **unearned**, held as a liability, because no cover has yet been given.`
+        : `After ${v.m} month${v.m === 1 ? "" : "s"}, **£${Math.round(earned)}k is earned** and £${Math.round(120 - earned)}k is still unearned, a liability for cover yet to be given.${v.season ? `\n\nNotice the hurricane pattern: the months from June to October carry most of the risk, so they earn most of the premium. Halfway through the calendar year, far less than half the premium has been earned.` : `\n\nEarned evenly, each month moves £10k from unearned to earned.`}`;
+      return {
+        readouts: [["Earned", `£${Math.round(earned)}k`, "c1"], ["Unearned", `£${Math.round(120 - earned)}k`]],
+        chart: {
+          type: "bars",
+          scale: 100,
+          ticks: [0, 25, 50, 75, 100],
+          suffix: "%",
+          rows: [{ label: "The £120k premium, month by month", total: `${Math.round(earnedPct * 100)}% earned`, segs }],
+          legend: [["c1", "Earned"], ["c1l", "Unearned"]]
+        },
+        insight
+      };
+    }
+  };
+
+  X["combined-ratio"] = {
+    title: "Combined ratio and the float",
+    blurb: "Push the combined ratio over 100% and see whether investment income rescues the year.",
+    ask: "An insurer earns £200m of premium. Change its claims and expenses, how long it holds premium before paying claims, and the interest rate it earns on that float.",
+    inputs: [
+      { k: "c", label: "Claims incurred", min: 80, max: 200, step: 2, value: 120, unit: "m" },
+      { k: "e", label: "Expenses", min: 40, max: 90, step: 2, value: 66, unit: "m" },
+      { k: "dur", label: "Years premium is held before claims are paid", min: 0.5, max: 6, step: 0.5, value: 2, unit: "yr" },
+      { k: "r", label: "Interest rate", min: 0, max: 8, step: 0.5, value: 4, unit: "pct" }
+    ],
+    presets: [
+      { label: "Short tail, low rates", v: { c: 130, e: 72, dur: 1, r: 0.5 } },
+      { label: "Long tail, high rates", v: { c: 136, e: 72, dur: 5, r: 5 } }
+    ],
+    compute(v, H) {
+      const P = 200;
+      const cor = ((v.c + v.e) / P) * 100;
+      const uw = P - v.c - v.e;
+      const inv = (v.c * v.dur * v.r) / 100;
+      const total = uw + inv;
+      let insight = `Loss ratio ${r1((v.c / P) * 100)}% plus expense ratio ${r1((v.e / P) * 100)}% gives a **combined ratio of ${r1(cor)}%**: an underwriting ${uw >= 0 ? "profit" : "loss"} of ${H.fmtM(Math.abs(uw))}.`;
+      if (uw < 0 && total >= 0) insight += `\n\nYet the year is still profitable: holding claims money for ${v.dur} years at ${pc(v.r)} earns ${H.fmtM(inv)}, more than the underwriting loss. That only works while claims are paid slowly and interest rates hold up.`;
+      else if (uw < 0) insight += `\n\nInvestment income of ${H.fmtM(inv)} isn’t enough to cover it. Try lengthening the tail or raising rates, and notice how much both are needed to rescue a combined ratio above 100%.`;
+      else insight += `\n\nInvestment income adds ${H.fmtM(inv)} on top. When rates are low, this is close to nothing and underwriting has to earn the whole return.`;
+      return {
+        readouts: [["Combined ratio", `${r1(cor)}%`, cor > 100 ? "bad" : "good"], ["Underwriting", H.fmtM(uw), uw >= 0 ? "good" : "bad"], ["Overall", H.fmtM(total), total >= 0 ? "good" : "bad"]],
+        chart: {
+          type: "waterfall",
+          prefix: "£",
+          suffix: "m",
+          dp: 0,
+          legend: [["c1", "Adds"], ["c2", "Takes away"], ["total", "Total"]],
+          steps: [
+            { label: "Earned premium", value: P },
+            { label: "Claims", value: -v.c },
+            { label: "Expenses", value: -v.e },
+            { label: "Underwriting result", total: true },
+            { label: "Investment income", value: inv },
+            { label: "Overall result", total: true }
+          ]
+        },
+        insight
+      };
+    }
+  };
+
+  X.cycle = {
+    title: "Run the underwriting cycle",
+    blurb: "Add a shock, speed up new capital or impose discipline, and watch twelve years of rates.",
+    ask: "A simple model of a market over twelve years: rates fall when capital is plentiful and rise when it is scarce, and good returns attract new capital. Add a shock in year 4, change how fast capital floods in, and see what discipline does.",
+    inputs: [
+      { k: "shock", label: "Catastrophe shock in year 4", min: 0, max: 70, step: 10, value: 40, show: (x) => (x ? `${x}% of capital` : "None") },
+      { k: "speed", label: "How fast new capital arrives", min: 0, max: 2, step: 0.5, value: 1, show: (x) => (x === 0 ? "Not at all" : x < 1 ? "Slowly" : x === 1 ? "Normally" : "Very fast") },
+      { k: "disc", label: "Underwriting discipline", min: 0, max: 90, step: 10, value: 0, unit: "pct" }
+    ],
+    compute(v) {
+      let K = 110, R = 100;
+      const rate = [], cor = [];
+      for (let t = 1; t <= 12; t++) {
+        const lr = (62 * 100) / R;
+        rate.push([t, r1(R)]);
+        cor.push([t, r1(lr + 33)]);
+        const profit = R * (1 - lr / 100 - 0.33) - (t === 4 ? (v.shock * 110) / 100 : 0) + 0.03 * K;
+        const roe = profit / K;
+        K = K + profit + 0.6 * v.speed * Math.max(0, roe - 0.08) * K - (roe < 0 ? -0.2 * profit : 0);
+        let g = (0.45 * (100 - K)) / 100;
+        if (g < 0) g *= 1 - v.disc / 100;
+        R *= 1 + Math.max(-0.1, Math.min(0.3, g));
+      }
+      const rs = rate.map((p) => p[1]), cs = cor.map((p) => p[1]);
+      const swing = Math.max(...rs) - Math.min(...rs);
+      let insight = `Rates swing by **${Math.round(swing)} points** over the twelve years, and the combined ratio ranges from ${Math.round(Math.min(...cs))}% to ${Math.round(Math.max(...cs))}%.`;
+      insight += v.shock
+        ? ` The year-4 shock destroys capital, capacity shrinks and rates jump: a hard market. Profits then attract new capital, and the softening begins again.`
+        : ` Even with no shock, the market cycles by itself: profits attract capital, capital cuts prices, losses drive capital out. The cycle is built into how capital flows.`;
+      if (v.disc >= 50) insight += `\n\nDiscipline flattens the swings: underwriters who refuse to follow prices down lose less in the soft phase, so there is less damage to repair.`;
+      return {
+        readouts: [["Rate swing", `${Math.round(swing)} pts`], ["Worst combined ratio", `${Math.round(Math.max(...cs))}%`, Math.max(...cs) > 105 ? "bad" : ""], ["Best", `${Math.round(Math.min(...cs))}%`, "good"]],
+        chart: {
+          type: "line",
+          title: "Twelve years of the cycle",
+          height: 210,
+          x: { min: 1, max: 12, ticks: [1, 4, 8, 12], suffix: "", title: "Year" },
+          y: { min: 60, max: 160, ticks: [60, 80, 100, 120, 140, 160], title: "Index / %" },
+          refs: [{ y: 100, label: "Break-even", align: "start" }].concat(v.shock ? [{ x: 4, label: "Shock" }] : []),
+          series: [
+            { name: "Rate level (index)", tone: "c1", points: rate },
+            { name: "Combined ratio %", tone: "c2", dash: true, points: cor }
+          ]
+        },
+        insight
+      };
+    }
+  };
+
+  X.solvency = {
+    title: "The solvency ratio",
+    blurb: "Change the risks and the capital, then hit the insurer with a catastrophe.",
+    ask: "An insurer’s SCR combines its catastrophe risk with its other risks, allowing for diversification. Change its capital and risks, and then the size of a catastrophe this year.",
+    inputs: [
+      { k: "own", label: "Own funds", min: 150, max: 500, step: 10, value: 300, unit: "m" },
+      { k: "cat", label: "1-in-200 catastrophe loss", min: 50, max: 300, step: 10, value: 150, unit: "m" },
+      { k: "oth", label: "Capital for all other risks", min: 50, max: 250, step: 10, value: 120, unit: "m" },
+      { k: "ev", label: "Catastrophe this year", min: 0, max: 250, step: 10, value: 80, unit: "m" }
+    ],
+    compute(v, H) {
+      const scr = Math.sqrt(v.cat * v.cat + v.oth * v.oth);
+      const before = (v.own / scr) * 100;
+      const after = ((v.own - v.ev) / scr) * 100;
+      const div = v.cat + v.oth - scr;
+      const scale = Math.max(v.own, scr) * 1.12;
+      let insight = `The SCR is ${H.fmtM(scr)}: less than the ${H.fmtM(v.cat + v.oth)} you get by adding the two risks, because they are unlikely to hit their 1-in-200 levels in the same year (diversification saves ${H.fmtM(div)}).\n\nWith ${H.fmtM(v.own)} of own funds, the solvency ratio is **${Math.round(before)}%**.`;
+      if (v.ev > 0) insight += after >= 100
+        ? ` After a ${H.fmtM(v.ev)} catastrophe it falls to ${Math.round(after)}%: still solvent, but with much less margin for the next event.`
+        : ` After a ${H.fmtM(v.ev)} catastrophe it falls to **${Math.round(after)}%**, below 100%. The insurer must restore it quickly: raise capital, buy more reinsurance or write less risk.`;
+      return {
+        readouts: [["SCR", H.fmtM(scr)], ["Ratio before", `${Math.round(before)}%`, before >= 100 ? "good" : "bad"], ["Ratio after", `${Math.round(after)}%`, after >= 120 ? "good" : after >= 100 ? "" : "bad"]],
+        chart: {
+          type: "bars",
+          scale,
+          prefix: "£",
+          suffix: "m",
+          mark: [scr, `SCR ${H.fmtM(scr)}`],
+          rows: [
+            { label: "Own funds before", total: H.fmtM(v.own), segs: [[v.own, "", "c1"]] },
+            { label: "After the catastrophe", total: H.fmtM(v.own - v.ev), segs: [[Math.max(0, v.own - v.ev), "", after >= 100 ? "c1" : "c2"], [Math.min(v.ev, v.own), "", "hatch"]] }
+          ],
+          legend: [["c1", "Own funds"], ["hatch", "Lost to the catastrophe"]]
+        },
+        insight
+      };
+    }
+  };
+
   window.SLIP_DATA.explore = Object.assign(window.SLIP_DATA.explore || {}, X);
 })();

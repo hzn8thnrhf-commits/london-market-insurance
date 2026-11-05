@@ -988,7 +988,7 @@ h1, h2, h3 { text-wrap: balance; }
 
 /* stacked bars */
 .bars { display: flex; flex-direction: column; gap: 14px; }
-.bars.has-mark { padding-bottom: 14px; }
+.bars.has-mark { padding-bottom: 22px; }
 .bars-head { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 5px; font-size: 13.5px; line-height: 1.3; }
 .bars-head b { font-weight: 600; min-width: 0; }
 .bars-head span { color: var(--ink-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
