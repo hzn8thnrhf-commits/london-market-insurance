@@ -2026,5 +2026,231 @@ window.SLIP_DATA = window.SLIP_DATA || {};
     }
   };
 
+  /* ---------------------------------------------------------------- m15 */
+  X["mga-economics"] = {
+    title: "An MGA’s break-even point",
+    blurb: "Move the premium and watch fixed costs turn an MGA from loss to profit.",
+    ask: "An MGA earns commission on premium and passes part of it to brokers, but its running costs are mostly fixed. Change the premium it writes, its commission, the brokers’ share and its costs.",
+    inputs: [
+      { k: "p", label: "Premium written", min: 5, max: 40, step: 1, value: 20, unit: "m" },
+      { k: "c", label: "Total commission", min: 20, max: 35, step: 1, value: 25, unit: "pct" },
+      { k: "b", label: "Of which, to brokers", min: 5, max: 15, step: 1, value: 10, unit: "pct" },
+      { k: "cost", label: "Running costs", min: 1, max: 5, step: 0.1, value: 2.2, unit: "m" }
+    ],
+    compute(v, H) {
+      const keep = (v.c - v.b) / 100;
+      const profit = v.p * keep - v.cost;
+      const be = v.cost / keep;
+      const insight = `The MGA keeps ${v.c - v.b}% of premium: ${gbp(v.p * keep)} on ${H.fmtM(v.p)}. After ${gbp(v.cost)} of running costs, it makes **${gbp(profit)}**.\n\nIts break-even is about ${gbp(be)} of premium. ${profit < 0 ? "Below it, the MGA loses money even if every policy it writes is sound." : `Notice the leverage: a 20% fall in premium would cut profit by ${gbp(v.p * keep * 0.2)}, ${profit > 0 ? `${Math.round(((v.p * keep * 0.2) / profit) * 100)}% of it` : ""}, because the costs don’t fall with it.`}`;
+      return {
+        readouts: [["MGA keeps", gbp(v.p * keep)], ["Profit", gbp(profit), profit >= 0 ? "good" : "bad"], ["Break-even premium", gbp(be)]],
+        chart: {
+          type: "line",
+          title: "MGA profit against premium",
+          height: 200,
+          x: { min: 0, max: 40, ticks: [0, 10, 20, 30, 40], prefix: "£", suffix: "m", title: "Premium written" },
+          y: { min: -5, max: 10, ticks: [-5, 0, 5, 10], prefix: "£", suffix: "m", title: "MGA profit" },
+          refs: [{ y: 0, label: "Break-even", align: "start" }],
+          series: [{ name: "Profit", tone: "c1", points: [[0, -v.cost], [40, r2(40 * keep - v.cost)]] }],
+          marks: [{ x: v.p, y: r2(profit), tone: "c2", label: gbp(profit), dx: 8, dy: -8 }]
+        },
+        insight
+      };
+    }
+  };
+
+  X["panel-withdrawal"] = {
+    title: "Lose a carrier",
+    blurb: "Take the largest carrier off the panel and see what happens to the MGA.",
+    ask: "An MGA’s £20m book is written by a panel: A 40%, B 35%, C 25%. It keeps 18% commission and has £2.4m of fixed costs. Have Carrier A give notice, and see how much replacement capacity the MGA can find in time.",
+    inputs: [
+      { k: "out", label: "Carrier A gives notice?", min: 0, max: 1, step: 1, value: 1, show: (x) => (x ? "Yes" : "No") },
+      { k: "rep", label: "Replacement capacity found", min: 0, max: 40, step: 5, value: 15, unit: "pct" }
+    ],
+    compute(v, H) {
+      const cap = v.out ? 60 + Math.min(v.rep, 40) : 100;
+      const prem = (20 * cap) / 100;
+      const profit = 0.18 * prem - 2.4;
+      const insight = !v.out
+        ? `With the full panel the MGA writes its planned £20m and makes **${gbp(profit)}**. Now see what happens if its largest carrier leaves.`
+        : `Carrier A’s 40% goes. ${v.rep ? `The MGA finds ${v.rep}% elsewhere, so it can write ${cap}% of its plan: ${gbp(prem)}.` : `Without a replacement, it can write only 60% of its plan: ${gbp(prem)}.`} Its fixed costs don’t shrink, so profit falls from £1.2m to **${gbp(profit)}**${profit < 0 ? ": a loss, from a book that was perfectly profitable" : ""}.\n\nThat is why dependence on one large carrier is so dangerous, and why the test of a structure is whether it survives losing its biggest backer.`;
+      return {
+        readouts: [["Premium written", gbp(prem)], ["MGA profit", gbp(profit), profit >= 0 ? "good" : "bad"]],
+        chart: {
+          type: "bars",
+          scale: 100,
+          suffix: "%",
+          ticks: [0, 50, 100],
+          rows: [{ label: "Before: the planned panel", total: "100%", segs: [[40, v.out ? "" : "A 40%", v.out ? "hatch" : "c1"], [35, "B 35%", "c2"], [25, "C 25%", "c3"]] },
+            { label: "After renewal", total: `${cap}%`, segs: (v.out ? [[Math.min(v.rep, 40), v.rep >= 12 ? "New" : "", "c4"]] : [[40, "A", "c1"]]).concat([[35, "B", "c2"], [25, "C", "c3"]]) }],
+          legend: [["c1", "Carrier A"], ["c2", "B"], ["c3", "C"], ["c4", "Replacement"]]
+        },
+        insight
+      };
+    }
+  };
+
+  X["two-views"] = {
+    title: "Two views of one plan",
+    blurb: "Miss the premium plan or the loss ratio and see who gets hurt.",
+    ask: "The plan: £20m of premium, brokers 10%, MGA commission 18%, a 55% loss ratio, carrier expenses 5%, MGA costs £2.4m. Change premium against plan and the loss ratio, and compare the MGA’s result with the carrier’s.",
+    inputs: [
+      { k: "d", label: "Premium against plan", min: -30, max: 20, step: 5, value: 0, show: (x) => `${x > 0 ? "+" : x < 0 ? "−" : ""}${Math.abs(x)}%` },
+      { k: "lr", label: "Loss ratio", min: 40, max: 75, step: 1, value: 55, unit: "pct" }
+    ],
+    presets: [
+      { label: "On plan", v: { d: 0, lr: 55 } },
+      { label: "Premium 20% short", v: { d: -20, lr: 55 } },
+      { label: "Loss ratio +5", v: { d: 0, lr: 60 } }
+    ],
+    compute(v) {
+      const P = 20 * (1 + v.d / 100);
+      const mga = 0.18 * P - 2.4;
+      const car = P * (1 - 0.1 - 0.18 - v.lr / 100 - 0.05);
+      const insight = `On ${gbp(P)} of premium at a ${v.lr}% loss ratio, the MGA makes **${gbp(mga)}** and the carrier **${gbp(car)}**, against plans of £1.2m and £2.4m.\n\n${v.d < 0 ? `The premium shortfall hits the MGA hardest: its commission falls but its costs don’t. ` : ""}${v.lr > 55 ? `The worse loss ratio falls entirely on the carrier: the MGA’s result doesn’t move, except for any profit commission it loses. ` : ""}That asymmetry is why carriers insist on alignment, and why a plan should show both sensitivities.`;
+      return {
+        readouts: [["MGA result", gbp(mga), mga >= 0 ? "good" : "bad"], ["Carrier result", gbp(car), car >= 0 ? "good" : "bad"]],
+        chart: {
+          type: "waterfall",
+          diverging: true,
+          prefix: "£",
+          suffix: "m",
+          dp: 2,
+          steps: [
+            { label: "MGA, plan", value: 1.2 },
+            { label: "MGA, actual", value: mga },
+            { label: "Carrier, plan", value: 2.4 },
+            { label: "Carrier, actual", value: car }
+          ]
+        },
+        insight
+      };
+    }
+  };
+
+  X["profit-commission"] = {
+    title: "Profit commission with a deficit",
+    blurb: "Set three years of results and watch a deficit carry forward.",
+    ask: "A binder pays the MGA a share of the carrier’s profit each underwriting year. Set each year’s profit or loss, the profit commission rate, and whether deficits are carried forward.",
+    inputs: [
+      { k: "y1", label: "Year 1 result", min: -2, max: 3, step: 0.1, value: 1, unit: "m" },
+      { k: "y2", label: "Year 2 result", min: -2, max: 3, step: 0.1, value: -0.6, unit: "m" },
+      { k: "y3", label: "Year 3 result", min: -2, max: 3, step: 0.1, value: 1.5, unit: "m" },
+      { k: "rate", label: "Profit commission rate", min: 10, max: 30, step: 5, value: 20, unit: "pct" },
+      { k: "dcf", label: "Deficit carried forward?", min: 0, max: 1, step: 1, value: 1, show: (x) => (x ? "Yes" : "No") }
+    ],
+    presets: [
+      { label: "The textbook case", v: { y1: 1, y2: -0.6, y3: 1.5, rate: 20, dcf: 1 } },
+      { label: "Two bad years", v: { y1: -1.2, y2: -0.8, y3: 1.5, rate: 20, dcf: 1 } }
+    ],
+    compute(v) {
+      let def = 0;
+      const ys = [v.y1, v.y2, v.y3];
+      const pcs = ys.map((r) => {
+        if (!v.dcf) return Math.max(0, r) * (v.rate / 100);
+        if (r < 0) { def += -r; return 0; }
+        const base = Math.max(0, r - def);
+        def = Math.max(0, def - r);
+        return base * (v.rate / 100);
+      });
+      const total = pcs.reduce((a, b) => a + b, 0);
+      const noDcf = ys.reduce((a, r) => a + Math.max(0, r) * (v.rate / 100), 0);
+      let insight = `Total profit commission over three years: **${gbp(total)}**.`;
+      insight += v.dcf
+        ? ` ${ys.some((r) => r < 0) ? `Each loss had to be earned back from later profits before more profit commission was paid. Without the deficit clause the MGA would have received ${gbp(noDcf)}, being rewarded for a good year straight after a bad one.` : "No year lost money, so the deficit clause never bit."}`
+        : ` Without a deficit clause, a loss year simply pays nothing and is then forgotten, so the MGA is rewarded for the good years without paying back the bad. Switch the clause on and compare.`;
+      return {
+        readouts: [["Year 1", gbp(pcs[0])], ["Year 2", gbp(pcs[1])], ["Year 3", gbp(pcs[2])], ["Total", gbp(total), "c1"]],
+        chart: {
+          type: "waterfall",
+          diverging: true,
+          prefix: "£",
+          suffix: "m",
+          dp: 1,
+          steps: [
+            { label: "Year 1 result", value: v.y1, note: `Profit commission ${gbp(pcs[0])}` },
+            { label: "Year 2 result", value: v.y2, note: `Profit commission ${gbp(pcs[1])}` },
+            { label: "Year 3 result", value: v.y3, note: `Profit commission ${gbp(pcs[2])}` }
+          ]
+        },
+        insight
+      };
+    }
+  };
+
+  X["commission-choice"] = {
+    title: "Flat commission or profit commission?",
+    blurb: "Move the loss ratio and see which pay deal is better for the MGA, and for the carrier.",
+    ask: "On £10m of premium an MGA can choose 28% flat commission, or 23% plus 25% profit commission (after a 5% carrier allowance). Move the loss ratio and compare the MGA’s income under each.",
+    inputs: [
+      { k: "lr", label: "Loss ratio", min: 30, max: 80, step: 1, value: 50, unit: "pct" }
+    ],
+    presets: [
+      { label: "Good year", v: { lr: 40 } },
+      { label: "As planned", v: { lr: 50 } },
+      { label: "Bad year", v: { lr: 70 } }
+    ],
+    compute(v) {
+      const flat = 2.8;
+      const prof = Math.max(0, 10 - 2.3 - v.lr / 10 - 0.5);
+      const withPc = 2.3 + 0.25 * prof;
+      const carFlat = 10 - 2.8 - v.lr / 10 - 0.5;
+      const carPc = 10 - 2.3 - v.lr / 10 - 0.5 - 0.25 * prof;
+      const pts = (f) => [30, 40, 52, 60, 72, 80].map((x) => [x, r2(f(x))]);
+      const pcAt = (x) => 2.3 + 0.25 * Math.max(0, 7.2 - x / 10);
+      const insight = `At a ${v.lr}% loss ratio the flat deal pays the MGA ${gbp(flat)}, and the profit commission deal **${gbp(withPc)}**. ${withPc > flat + 0.005 ? "Good results make the profit-linked deal better for the MGA." : withPc < flat - 0.005 ? "With poor results, the profit-linked deal pays less: the MGA shares the pain." : "They are about equal here."}\n\nThe crossover is a loss ratio of about 52%. Under the profit-linked deal the MGA gains when the carrier gains and loses when it loses. That is what alignment means in practice, and why confident MGAs often prefer it.`;
+      return {
+        readouts: [["Flat 28%", gbp(flat)], ["23% plus PC", gbp(withPc), withPc >= flat ? "good" : "bad"], ["Carrier, with PC", gbp(carPc), carPc >= 0 ? "" : "bad"]],
+        chart: {
+          type: "line",
+          title: "MGA income by loss ratio",
+          height: 200,
+          x: { min: 30, max: 80, ticks: [30, 40, 50, 60, 70, 80], suffix: "%", title: "Loss ratio" },
+          y: { min: 2, max: 3.6, ticks: [2, 2.5, 3, 3.5], prefix: "£", suffix: "m", title: "MGA income" },
+          series: [
+            { name: "Flat 28%", tone: "c2", dash: true, points: pts(() => flat) },
+            { name: "23% plus profit commission", tone: "c1", points: pts(pcAt) }
+          ],
+          marks: [{ x: v.lr, y: r2(withPc), tone: "c1" }, { x: v.lr, y: flat, tone: "c2" }],
+          refs: [{ x: v.lr, label: "Now" }]
+        },
+        insight: insight + (carFlat !== carPc ? "" : "")
+      };
+    }
+  };
+
+  X["carrier-limits"] = {
+    title: "The tightest limit governs",
+    blurb: "Give two carriers different zone limits and find the panel’s ceiling.",
+    ask: "A two-carrier panel writes flood-zone business. Each carrier sets a limit on its own share of the exposure. Change the shares and the limits, and find the most the whole panel can write.",
+    inputs: [
+      { k: "a", label: "Carrier A’s share", min: 30, max: 80, step: 5, value: 60, unit: "pct" },
+      { k: "la", label: "A’s limit for its share", min: 10, max: 60, step: 2, value: 30, unit: "m" },
+      { k: "lb", label: "B’s limit for its share", min: 10, max: 60, step: 2, value: 24, unit: "m" }
+    ],
+    compute(v, H) {
+      const b = 100 - v.a;
+      const pa = v.la / (v.a / 100), pb = v.lb / (b / 100);
+      const max = Math.min(pa, pb);
+      const who = pa <= pb ? "A" : "B";
+      const insight = `Carrier A’s limit allows the panel ${H.fmtM(pa)} (£${v.la}m ÷ ${v.a}%); Carrier B’s allows ${H.fmtM(pb)} (£${v.lb}m ÷ ${b}%). The **tighter one governs**: the panel can write no more than **${H.fmtM(max)}** in the zone, set by Carrier ${who}.\n\nNotice that a carrier with a big share and a modest limit often binds first. The MGA must track every limit for every carrier, every month.`;
+      return {
+        readouts: [["Panel maximum", H.fmtM(max), "c1"], ["Set by", `Carrier ${who}`]],
+        chart: {
+          type: "bars",
+          scale: Math.max(pa, pb) * 1.15,
+          prefix: "£",
+          suffix: "m",
+          mark: [max, `Panel maximum ${H.fmtM(max)}`],
+          rows: [
+            { label: `Allowed by A (${v.a}% share)`, total: H.fmtM(pa), segs: [[pa, "", who === "A" ? "c2" : "c1"]] },
+            { label: `Allowed by B (${b}% share)`, total: H.fmtM(pb), segs: [[pb, "", who === "B" ? "c2" : "c1"]] }
+          ]
+        },
+        insight
+      };
+    }
+  };
+
   window.SLIP_DATA.explore = Object.assign(window.SLIP_DATA.explore || {}, X);
 })();
