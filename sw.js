@@ -1,11 +1,12 @@
 /* The Slip — offline support. Bump VERSION whenever app files change. */
-const VERSION = "the-slip-v2";
+const VERSION = "the-slip-v3";
 const SHELL = [
   "./",
   "index.html",
   "css/app.css",
   "js/content.js",
   "js/glossary.js",
+  "js/figures.js",
   "js/app.js",
   "manifest.webmanifest",
   "icons/icon.svg",
@@ -13,7 +14,6 @@ const SHELL = [
   "icons/icon-192.png",
   "icons/icon-512.png"
 ];
-const FONT_HOSTS = ["fonts.googleapis.com", "fonts.gstatic.com"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(VERSION).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -31,16 +31,6 @@ self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") return;
   const url = new URL(req.url);
-
-  // Google Fonts: cache first, they never change at a given URL.
-  if (FONT_HOSTS.includes(url.hostname)) {
-    event.respondWith(
-      caches.open(VERSION).then((cache) =>
-        cache.match(req).then((hit) => hit || fetch(req).then((res) => { cache.put(req, res.clone()); return res; }))
-      )
-    );
-    return;
-  }
 
   if (url.origin !== self.location.origin) return;
 

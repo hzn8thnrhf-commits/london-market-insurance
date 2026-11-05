@@ -13,6 +13,7 @@
  *   { timeline: [[year, text]] }
  *   { chain: [[title, text]] }  stacked chain-of-security diagram
  *   { lab: "slip"|"tower"|"ratio", text }  link to an interactive tool
+ *   { fig: "id" }               illustrative figure from js/figures.js
  */
 window.SLIP_DATA = window.SLIP_DATA || {};
 window.SLIP_DATA.modules = [
@@ -39,6 +40,7 @@ window.SLIP_DATA.modules = [
               ["P&I clubs", "Mutual associations that cover shipowners’ liabilities. Several are managed from London."]
             ]
           },
+          { fig: "market" },
           { analogy: "Picture a specialist hospital. Your local GP (a domestic insurer) handles everyday problems. When a case is rare, enormous or complicated, it gets referred to the specialists. London is where the world’s insurance referrals go." },
           "What makes London unusual is the **subscription market**. A single large risk is usually shared among many insurers, each taking a percentage. One underwriter leads and sets the terms; the others follow. You will meet this idea in almost every lesson.",
           { note: "You’ll hear it called the London Market, the specialty market or the wholesale market. They overlap but aren’t identical. Specialty describes the type of risk; wholesale describes how it is distributed, through brokers and often from other brokers." }
@@ -186,6 +188,7 @@ window.SLIP_DATA.modules = [
             ]
           },
           "Around 50 managing agents run roughly 100 syndicates, which together write more than £50bn of premium a year.",
+          { fig: "lloyds" },
           { analogy: "Think of a farmers’ market. The operator owns the site, sets the rules, checks standards and decides who gets a stall, but it doesn’t grow or sell any vegetables. The stallholders (syndicates) do the trading, with produce from the farms behind them (the members’ capital)." },
           "Underwriters from each syndicate sit at a **box** in the Underwriting Room at One Lime Street. Brokers bring risks to them and negotiate face to face or electronically.",
           "Every syndicate shares the Lloyd’s brand, licences and ratings, so a policy from a small specialist syndicate carries the same backing as one from the largest. That shared strength comes from the **chain of security**, which you’ll meet in module 03."
@@ -379,6 +382,7 @@ window.SLIP_DATA.modules = [
         body: [
           "A syndicate is technically an **annual venture**. Members join for a particular **year of account**. All policies that start in, say, 2026 belong to the 2026 year of account, however long their claims take to appear.",
           "Claims can take years to settle, so a year of account normally stays open for three years before its result is final. At the end of year three it closes by **reinsurance to close (RITC)**. The closing year pays a premium to the next year of account (or another syndicate), which takes over all its remaining liabilities. The members of the closed year then receive their profit or pay their loss.",
+          { fig: "yoa" },
           { analogy: "RITC is a relay baton. The 2024 runners carry the race as far as they can. At the handover they pass the baton (the unsettled claims) to the 2025 team, with enough provisions to finish the race, and leave the track with their result." },
           { example: { title: "Worked example", text: "A syndicate’s 2024 year of account closes at 31 December 2026. Some claims are still open and some haven’t been reported yet. Actuaries estimate the remaining liabilities at £40m. The 2024 year pays an RITC premium of £40m to the 2025 year, which takes responsibility for any future claims. Whatever remains is the 2024 members’ profit." } },
           "If future liabilities are too uncertain to price, the year stays open in **run-off** until it can close. Run-off years tie up members’ capital, so nobody wants them.",
@@ -396,6 +400,7 @@ window.SLIP_DATA.modules = [
         body: [
           "For most of its history, Lloyd’s capital came from wealthy individuals called **Names**. They backed syndicates with **unlimited liability**: they were liable down to their last cufflink. By the late 1980s there were more than 30,000 of them.",
           "Then several disasters arrived at once. There were huge, long-hidden claims for **asbestos** and **pollution** in the US, a run of catastrophes (Piper Alpha in 1988, Exxon Valdez and Hurricane Hugo in 1989), and the **LMX spiral**, in which excess of loss reinsurance was passed round and round between London syndicates until a few were left holding enormous losses.",
+          { fig: "spiral" },
           { analogy: "The LMX spiral was pass-the-parcel with a ticking bomb. Each syndicate reinsured its large losses with another, which reinsured with another, until the same loss had circled the room several times. When the music stopped, the losses landed on whoever was holding the parcel." },
           "Losses between 1988 and 1992 ran into billions of pounds. Many Names were ruined, and there was widespread litigation against managing agents.",
           "In 1996 the **Reconstruction and Renewal** plan settled the disputes. A new company, **Equitas**, reinsured all the 1992 and earlier non-life liabilities of Lloyd’s Names, ring-fencing the past. In 2007 Berkshire Hathaway’s National Indemnity took over Equitas’s liabilities through reinsurance.",
@@ -493,6 +498,7 @@ window.SLIP_DATA.modules = [
               "**Documents and accounting.** The contract is finalised, premium is processed and paid, and policy documents are issued."
             ]
           },
+          { fig: "journey" },
           { analogy: "It’s like organising a group gift. One person (the leader) chooses the present and sets the price. Then the organiser (the broker) goes round the office collecting contributions until the cost is covered. Everyone pays toward the same gift on the same terms." },
           "Not everything is placed like this. Smaller, more standard risks often go through **delegated authority** (module 05), where an agent binds cover for underwriters without them seeing each risk."
         ],
@@ -551,6 +557,7 @@ window.SLIP_DATA.modules = [
           "Brokers usually aim to **oversubscribe** a risk, collecting lines that add up to more than 100%. That gives the client a buffer in case an underwriter drops out, and lets the broker reduce everyone’s share evenly at the end.",
           "The share an underwriter agrees is their **written line**. If the total is over 100%, every line is reduced in proportion to give its **signed line**, so that the total is exactly 100%. This is **signing down**.",
           { example: { title: "Worked example", text: "A broker collects four lines: 40%, 30%, 30% and 25%. Total written: 125%. Signing-down factor: 100 ÷ 125 = 0.8. Signed lines: 32%, 24%, 24% and 20%, which add up to 100%." } },
+          { fig: "signing" },
           { analogy: "Picture pre-orders for a limited run of 100 prints. If orders arrive for 125, the gallery doesn’t turn away the last customers. Everyone gets 80% of what they asked for, so each buyer keeps a fair share." },
           "An underwriter who doesn’t want to be reduced can mark their line **to stand**. Then only the other lines are signed down. Signing down must follow the slip’s terms and the client’s instructions, and is normally done at or soon after binding.",
           { lab: "slip", text: "Set written lines and watch signing down happen in the Slip builder." }
@@ -670,6 +677,7 @@ window.SLIP_DATA.modules = [
         body: [
           "In the **open market**, an underwriter sees each risk individually. The broker presents it, and the underwriter assesses it and decides. That works for a refinery or a satellite, but not for 5,000 small Italian shops or 20,000 US homes.",
           "Under **delegated authority**, an insurer authorises another firm to accept risks, issue documents and sometimes handle claims on its behalf, within agreed limits. It lets London capacity reach local, smaller and more standard business far from Lime Street.",
+          { fig: "delegated" },
           { analogy: "Delegated authority is a franchise. Head office (the syndicate) designs the menu, sets the prices and writes the hygiene rules. Local franchisees (coverholders) serve customers day to day, and head office checks the books and inspects the kitchens." },
           "Delegated authority makes up a large share of Lloyd’s premium. It is efficient, but it puts the insurer’s capital in someone else’s hands, so controls and oversight matter a great deal."
         ],
@@ -1045,6 +1053,7 @@ window.SLIP_DATA.modules = [
               "**Gain expertise** in new classes or territories"
             ]
           },
+          { fig: "reins-chain" },
           { analogy: "A bakery gets an order for a 2,000-slice wedding cake. It could bake it all, but if something goes wrong it’s ruined. So it subcontracts part of the order to a bigger bakery. The couple only deals with the first bakery, but the risk is shared behind the scenes." },
           "The original policyholder usually has no direct relationship with the reinsurer. If a reinsurer fails, the cedant must still pay its policyholders in full.",
           "London is one of the world’s main reinsurance centres, alongside Bermuda, Zurich and Munich, and Lloyd’s, taken as a whole, is one of the largest reinsurers in the world."
@@ -1103,6 +1112,7 @@ window.SLIP_DATA.modules = [
           "In **non-proportional** reinsurance, the reinsurer pays only when losses go above a threshold. The most common form is **excess of loss (XL)**.",
           "An XL layer is written as **limit xs attachment**, for example £10m xs £5m. The cedant pays the first £5m of each loss (the **retention** or **attachment point**). The reinsurer pays the next £10m. Anything above £15m falls back on the cedant unless it has bought another layer.",
           { example: { title: "Excess of loss example", text: "Layer: £10m xs £5m. A £3m loss: the reinsurer pays nothing. A £12m loss: the reinsurer pays £7m (£12m − £5m). A £20m loss: the reinsurer pays £10m, its full limit, and the cedant pays its £5m retention plus the £5m above the layer." } },
+          { fig: "three-ways" },
           { analogy: "An XL layer is like a car insurance excess turned inside out. You (the cedant) pay the first slice of any claim yourself. The reinsurer pays the middle slice, up to a cap. If the claim is bigger still, the top is yours again unless you bought another layer." },
           {
             terms: [
@@ -1256,6 +1266,7 @@ window.SLIP_DATA.modules = [
               "**Settlement.** The claim is agreed and paid, usually through the broker and central settlement."
             ]
           },
+          { fig: "claim-life" },
           { analogy: "A loss adjuster is like a surveyor after a flood. They don’t decide whether you’re insured. They establish what happened and what it will cost to put right, so the insurer can make that decision." },
           "A **loss assessor**, by contrast, is hired by the insured to prepare and negotiate the claim on its side."
         ],
@@ -1448,6 +1459,7 @@ window.SLIP_DATA.modules = [
               ]
             }
           },
+          { fig: "remedies" },
           { example: { title: "Proportionate reduction", text: "An insured carelessly fails to mention a previous fire. The insurer would have charged £150,000 instead of £100,000. The insured then claims £1m. The insurer pays in proportion: 100,000 ÷ 150,000 = two-thirds, so £666,667." } },
           { h: "Warranties" },
           "A **warranty** is a promise by the insured, for example that a sprinkler system will be maintained. Under the old law, any breach automatically ended the insurer’s liability from that moment, even if the breach had nothing to do with a later loss.",
@@ -1474,6 +1486,7 @@ window.SLIP_DATA.modules = [
               ["Losses occurring during", "In reinsurance: covers losses that happen during the reinsurance period, whenever the original policy started."]
             ]
           },
+          { fig: "triggers" },
           { analogy: "Losses occurring is like a gym membership: what counts is when you used the gym. Claims made is like a warranty helpline: what counts is when you call, not when the fault developed." },
           { example: { title: "Spot the gap", text: "A firm moves its claims-made PI policy to a new insurer, whose retroactive date is the start of the new policy. A claim arrives about advice given two years ago. The old policy has expired, and the new one excludes work before its retroactive date. No cover. Brokers avoid this by keeping the original retroactive date or buying run-off cover." } }
         ],
@@ -1609,6 +1622,7 @@ window.SLIP_DATA.modules = [
             ]
           },
           { example: { title: "Calculating a combined ratio", text: "Earned premium £200m. Claims incurred £120m. Expenses £66m. Loss ratio 60%, expense ratio 33%, combined ratio 93%. For every £1 of premium, the insurer kept 7p as underwriting profit, before investment income." } },
+          { fig: "ratio" },
           { analogy: "Think of a café. If every £1 of sales costs 60p in ingredients (claims) and 33p in rent and wages (expenses), you keep 7p. A combined ratio over 100% is a café selling coffee for less than it costs to make." },
           "Insurers also earn **investment income** on premium they hold before paying claims, called the **float**. Long-tail classes generate more float, so a combined ratio a little above 100% can still be profitable overall when interest rates are high.",
           "Lloyd’s reported a combined ratio of 84.0% for 2023, one of its strongest results in years. In heavy loss years such as 2017 and the pandemic year 2020, its combined ratio was above 100%.",
@@ -1632,6 +1646,7 @@ window.SLIP_DATA.modules = [
             ]
           },
           "A typical cycle runs like this: profits attract new capital, competition pushes prices down, losses eventually exceed premiums, capital leaves or is used up, prices rise, profits return, and new capital arrives again.",
+          { fig: "cycle" },
           { analogy: "It’s like renting in a university town. When lots of new flats are built, landlords cut rents to fill them. When supply dries up or demand surges, rents jump. Insurance capacity behaves like housing supply." },
           "London felt this sharply. After years of soft pricing, Lloyd’s launched a performance review in 2018 that required syndicates to fix or exit their worst-performing business. A hard market followed from 2019, driven by catastrophe losses, the pandemic, inflation and rising reinsurance costs.",
           "Underwriting discipline means holding rates and terms when competitors chase volume. It’s easy to describe and hard to do."
@@ -1741,6 +1756,7 @@ window.SLIP_DATA.modules = [
             ]
           },
           "Managing agents and London insurers are **dual-regulated** by the PRA and FCA. Brokers are regulated by the FCA alone. Lloyd’s adds a third layer of oversight for its own market.",
+          { fig: "regulators" },
           { analogy: "It’s like a building with two inspectors. One checks that the structure won’t fall down (the PRA). The other checks that tenants are treated fairly and the fire exits work (the FCA). Lloyd’s is the landlord, with its own house rules on top." },
           "The FCA’s **Consumer Duty**, in force since July 2023, raised standards for firms whose products reach retail customers, which includes some London Market products sold through delegated authority.",
           "Overseas, Lloyd’s and London insurers must also satisfy local regulators wherever they write business."

@@ -9,6 +9,10 @@ A pocket course in London Market insurance, built as an iPhone web app. You can 
 
 It is designed for the **iPhone Duo**. On the 5.4-inch cover screen it works like a normal iPhone app. Unfold it and the app opens like a book: a left page and a right page, with the gap between them on the fold, so no text sits on the crease. For example, a lesson's outline stays on the left while you read on the right, a quiz question sits opposite its answers, and the Lab tools put the controls on the left and the results on the right. Folding or unfolding mid-lesson keeps your place. Other phones, iPads and desktop browsers get the same layouts at their own widths.
 
+**Diagrams.** Fifteen lessons include a figure: the journey of a risk, how Lloyd’s fits together, the LMX spiral, years of account and reinsurance to close, delegated authority, the reinsurance chain, quota share vs surplus vs excess of loss, the life of a claim, the Insurance Act remedies decision tree, policy triggers on a timeline, the underwriting cycle and who regulates whom. Unfolded, each figure sits on the left page beside the lesson text. Every module also has a **mind map**, and there is a **course map** of all 11 modules. Unfolded, their trunk runs down the fold with lessons branching off both pages; on a phone the trunk moves to the left edge. Figures live in `js/figures.js` as plain data, and arrows are redrawn automatically when the screen size changes.
+
+The app uses the iPhone’s own font, San Francisco, so it reads like a native app. It loads no web fonts.
+
 Your progress shows on the home screen as a London slip, with each module stamped once you finish it. Progress is stored in the browser on your device (`localStorage`).
 
 ## Put it on your iPhone
@@ -39,6 +43,7 @@ python3 -m http.server 8000
 | `css/app.css` | All styles, with light and dark themes |
 | `js/content.js` | Modules, lessons and quizzes |
 | `js/glossary.js` | Glossary entries (also the flashcard deck) |
+| `js/figures.js` | Lesson figures and the key ideas shown on the mind maps |
 | `js/app.js` | Routing, progress, quizzes, flashcards and Lab tools |
 | `sw.js` | Service worker for offline use |
 | `manifest.webmanifest`, `icons/` | Install metadata and icons |

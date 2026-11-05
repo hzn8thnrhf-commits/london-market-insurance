@@ -65,7 +65,8 @@
     tower: '<rect x="6" y="3" width="12" height="5" rx="1"/><rect x="6" y="9.5" width="12" height="5" rx="1"/><rect x="6" y="16" width="12" height="5" rx="1"/>',
     ratio: '<path d="M4 20h16"/><path d="M7 20v-8M12 20V6M17 20v-5"/>',
     cards: '<rect x="4" y="7" width="12.5" height="14" rx="2"/><path d="M8 3.5h10a2 2 0 0 1 2 2V17"/>',
-    bolt: '<path d="M13 3L5 13.5h6L10 21l8-10.5h-6z"/>'
+    bolt: '<path d="M13 3L5 13.5h6L10 21l8-10.5h-6z"/>',
+    map: '<circle cx="12" cy="12" r="2.6"/><circle cx="4.8" cy="6" r="2"/><circle cx="19.2" cy="6" r="2"/><circle cx="4.8" cy="18" r="2"/><circle cx="19.2" cy="18" r="2"/><path d="M9.8 10.6 6.5 7.4M14.2 10.6l3.3-3.2M9.8 13.4l-3.3 3.2M14.2 13.4l3.3 3.2"/>'
   };
   const icon = (name, cls = "") =>
     `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name]}</svg>`;
@@ -121,13 +122,16 @@
     </div></header>`;
   }
 
-  const spread = (left, right, cover = false) =>
-    `<div class="spread"><div class="page page-l${cover ? " cover" : ""}">${left}</div><div class="page page-r">${right}</div></div>`;
+  const spread = (left, right, cls = false) =>
+    `<div class="spread"><div class="page page-l${cls === true ? " cover" : cls ? ` ${cls}` : ""}">${left}</div><div class="page page-r">${right}</div></div>`;
+  const mapBtn = (href, label) => `<a class="mast-btn" href="#${href}">${icon("map")}<span>${label}</span></a>`;
   const LETTERS = [...new Set(GLOSSARY.map((g) => g.term[0].toUpperCase()))];
 
   function resolve(h) {
     let m;
     if (h === "learn") return { tab: "learn", html: viewLearn };
+    if (h === "map") return { tab: "learn", html: () => viewMap(null), top: true };
+    if ((m = h.match(/^map-(m\d\d)$/)) && MOD[m[1]]) return { tab: "learn", html: () => viewMap(MOD[m[1]]), top: true };
     if ((m = h.match(/^(m\d\d)$/)) && MOD[m[1]]) return { tab: "learn", html: () => viewModule(MOD[m[1]]) };
     if ((m = h.match(/^(m\d\d-l\d+)$/)) && LESSON[m[1]]) return { tab: "learn", html: () => viewLesson(LESSON[m[1]]), lesson: true };
     if (h === "practice") return { tab: "practice", html: viewPractice };
@@ -161,6 +165,7 @@
     const y = !v.lesson && !v.top && scrollMem[h] ? scrollMem[h] : 0;
     window.scrollTo(0, y);
     updateReadbar();
+    drawFigures();
   }
 
   function rerender(keepScroll = true) {
@@ -168,6 +173,7 @@
     app.innerHTML = resolve(current).html();
     window.scrollTo(0, keepScroll ? y : 0);
     updateReadbar();
+    drawFigures();
   }
 
   /* ---------------------------------------------------------------- home */
@@ -290,7 +296,8 @@
     return spread(`${mast({
       kicker: `${MODULES.length} modules · ${LESSONS.length} lessons`,
       title: "Learn",
-      sub: "The course runs from the basics to today’s market. Go in order, or jump to what you need."
+      sub: "The course runs from the basics to today’s market. Go in order, or jump to what you need.",
+      extra: mapBtn("map", "Course map")
     })}`, `<div class="wrap stack"><div class="group">${rows}</div></div>`, true);
   }
 
@@ -311,7 +318,7 @@
       kicker: `Module ${m.code} · ${m.lessons.length} lessons · ${mins} min`,
       title: esc(m.title),
       sub: esc(m.blurb),
-      extra: `<span class="cover-mark spread-only" aria-hidden="true">${m.code}</span>`
+      extra: `<span class="cover-mark spread-only" aria-hidden="true">${m.code}</span>${mapBtn(`map-${m.id}`, "Mind map")}`
     })}`, `<div class="wrap stack">
       <section class="section"><h2 class="section-title">Lessons</h2><div class="group">${rows}</div></section>
       <section class="section"><h2 class="section-title">Check yourself</h2>
@@ -328,6 +335,7 @@
   /* ---------------------------------------------------------------- lesson */
   function block(b) {
     if (typeof b === "string") return `<p>${fmt(b)}</p>`;
+    if (b.fig) return `<div class="fig-inline">${figureHTML(b.fig)}</div>`;
     if (b.h) return `<h2>${fmt(b.h)}</h2>`;
     if (b.ul) return `<ul>${b.ul.map((x) => `<li>${fmt(x)}</li>`).join("")}</ul>`;
     if (b.ol) return `<ol>${b.ol.map((x) => `<li><span>${fmt(x)}</span></li>`).join("")}</ol>`;
@@ -354,6 +362,276 @@
     return "";
   }
 
+
+  /* ---------------------------------------------------------------- figures */
+  const FIGS = DATA.figures || {};
+  const FIGNUM = {};
+  MODULES.forEach((m) => {
+    let n = 0;
+    m.lessons.forEach((l) => l.body.forEach((b) => {
+      if (b && b.fig && FIGS[b.fig]) FIGNUM[b.fig] = `${parseInt(m.code, 10)}.${++n}`;
+    }));
+  });
+
+  const legendHTML = (items) =>
+    items ? `<div class="fig-legend">${items.map(([tone, t]) => `<span><i class="sw s-${tone}"></i>${esc(t)}</span>`).join("")}</div>` : "";
+
+  function nodeHTML(n, i, spec) {
+    const [r, c] = n.at;
+    const s = n.span || 1;
+    const [rn, cn] = n.atN || n.at;
+    const sn = n.spanN || s;
+    return `<div class="node tone-${n.tone || "plain"}" data-id="${n.id}" style="--r:${r};--c:${c};--s:${s};--rn:${rn};--cn:${cn};--sn:${sn}">${spec.steps ? `<span class="step">${i + 1}</span>` : ""}<b>${esc(n.label)}</b>${n.sub ? `<span>${esc(n.sub)}</span>` : ""}</div>`;
+  }
+
+  function figBody(id, spec) {
+    if (spec.type === "graph") {
+      return `<div class="fig" data-fig="${id}"><svg class="edges" aria-hidden="true"></svg><div class="graph" style="--cols:${spec.cols};--cols-n:${spec.colsN || spec.cols}${spec.gap ? `;--gy:${spec.gap}px` : ""}">${spec.nodes.map((n, i) => nodeHTML(n, i, spec)).join("")}</div><div class="edge-labels" aria-hidden="true"></div></div>`;
+    }
+    if (spec.type === "bars") {
+      const last = spec.rows.length - 1;
+      const rows = spec.rows.map((r, ri) => `<div class="bars-row">
+        <div class="bars-head"><b>${esc(r.label)}</b><span>${esc(r.total)}</span></div>
+        <div class="bars-track"><div class="bars-fill">${r.segs.map(([v, t, tone]) => `<span class="seg s-${tone}" style="width:${(v / spec.scale) * 100}%"><em>${esc(t)}</em></span>`).join("")}</div>${spec.mark ? `<i class="bars-mark" style="left:${(spec.mark[0] / spec.scale) * 100}%">${ri === last ? `<em>${esc(spec.mark[1])}</em>` : ""}</i>` : ""}</div>
+      </div>`).join("");
+      return `<div class="fig bars${spec.mark ? " has-mark" : ""}">${rows}</div>${legendHTML(spec.legend)}`;
+    }
+    if (spec.type === "timeline") {
+      const x = (v) => ((v - spec.from) / (spec.to - spec.from)) * 100;
+      const rows = spec.rows.map((r) => {
+        if (r.group) return `<div class="tl-group">${esc(r.group)}</div>`;
+        const start = Math.min(...r.segs.map((g) => g[0]));
+        const end = Math.max(...r.segs.map((g) => g[1]));
+        return `<div class="tl-row"><span class="tl-label">${esc(r.label)}</span><div class="tl-track"><div class="tl-bar" data-id="${r.id}" style="left:${x(start)}%;width:${x(end) - x(start)}%">${r.segs
+          .map(([a, b, tone, t]) => `<span class="seg s-${tone}" style="flex:${b - a}">${t ? `<em>${esc(t)}</em>` : ""}</span>`)
+          .join("")}</div></div></div>`;
+      }).join("");
+      const ticks = spec.ticks.map((t) => `<span style="left:${x(t)}%">${t}</span>`).join("");
+      const markers = (spec.markers || []).map(([at, t]) => `<i class="tl-marker" style="left:${x(at)}%"><em>${esc(t)}</em></i>`).join("");
+      return `<div class="fig tl${markers ? " has-markers" : ""}" data-fig="${id}"><svg class="edges" aria-hidden="true"></svg>
+        <div class="tl-body">${markers ? `<div class="tl-markers" aria-hidden="true">${markers}</div>` : ""}${rows}<div class="tl-row tl-axis"><span class="tl-label"></span><div class="tl-track">${ticks}</div></div></div>
+        <div class="edge-labels" aria-hidden="true"></div></div>${legendHTML(spec.legend)}`;
+    }
+    return "";
+  }
+
+  function figureHTML(id) {
+    const spec = FIGS[id];
+    if (!spec) return "";
+    return `<figure class="figure"><div class="fig-head"><span>Figure ${FIGNUM[id] || ""}</span>${esc(spec.title)}</div>${figBody(id, spec)}<figcaption class="fig-caption">${esc(spec.caption)}</figcaption></figure>`;
+  }
+
+  /* arrows between boxes, measured after layout */
+  const NORM = { t: [0, -1], b: [0, 1], l: [-1, 0], r: [1, 0] };
+  const f1 = (v) => v.toFixed(1);
+  function anchor(r, side, at) {
+    const f = at === undefined ? 0.5 : at;
+    if (side === "t") return [r.x + r.w * f, r.y];
+    if (side === "b") return [r.x + r.w * f, r.y + r.h];
+    if (side === "l") return [r.x, r.y + r.h * f];
+    return [r.x + r.w, r.y + r.h * f];
+  }
+  function autoSides(a, b) {
+    const hOver = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
+    const vOver = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+    if (vOver > 0 && hOver <= 0) return b.x > a.x ? ["r", "l"] : ["l", "r"];
+    return b.y > a.y ? ["b", "t"] : ["t", "b"];
+  }
+  function bezPoint(p0, c1, c2, p3, t) {
+    const u = 1 - t;
+    return [0, 1].map((i) => u * u * u * p0[i] + 3 * u * u * t * c1[i] + 3 * u * t * t * c2[i] + t * t * t * p3[i]);
+  }
+  function relBox(base, el) {
+    const r = el.getBoundingClientRect();
+    return { x: r.left - base.left, y: r.top - base.top, w: r.width, h: r.height };
+  }
+
+  function drawEdges(fig, spec) {
+    const svg = fig.querySelector(":scope > svg.edges");
+    const labels = fig.querySelector(":scope > .edge-labels");
+    const W = fig.clientWidth;
+    const H = fig.clientHeight;
+    if (!svg || !W) return;
+    const base = fig.getBoundingClientRect();
+    const box = (id) => {
+      const el = fig.querySelector(`[data-id="${id}"]`);
+      return el ? relBox(base, el) : null;
+    };
+    let lines = "", heads = "", labs = "";
+    (spec.edges || []).forEach((e) => {
+      const a = box(e.from), b = box(e.to);
+      if (!a || !b) return;
+      const auto = autoSides(a, b);
+      const fs = e.fromSide || auto[0];
+      const ts = e.toSide || auto[1];
+      const p0 = anchor(a, fs, e.fromAt);
+      const p3 = anchor(b, ts, e.toAt);
+      const ca = [a.x + a.w / 2, a.y + a.h / 2], cb = [b.x + b.w / 2, b.y + b.h / 2];
+      const dd = Math.hypot(cb[0] - ca[0], cb[1] - ca[1]) || 1;
+      const perp = [-(cb[1] - ca[1]) / dd, (cb[0] - ca[0]) / dd];
+      if (e.bend) {
+        const sg = Math.sign(e.bend);
+        const shift = (side, r, p) => {
+          if (side === "t" || side === "b") p[0] += Math.sign(perp[0] * sg) * Math.min(22, r.w * 0.18);
+          else p[1] += Math.sign(perp[1] * sg) * Math.min(22, r.h * 0.18);
+        };
+        if (e.fromAt === undefined) shift(fs, a, p0);
+        if (e.toAt === undefined) shift(ts, b, p3);
+      }
+      const dist = Math.hypot(p3[0] - p0[0], p3[1] - p0[1]) || 1;
+      const k = Math.max(12, Math.min(46, dist * 0.42));
+      const c1 = [p0[0] + NORM[fs][0] * k, p0[1] + NORM[fs][1] * k];
+      const c2 = [p3[0] + NORM[ts][0] * k, p3[1] + NORM[ts][1] * k];
+      if (e.bend) {
+        c1[0] += perp[0] * e.bend; c1[1] += perp[1] * e.bend;
+        c2[0] += perp[0] * e.bend; c2[1] += perp[1] * e.bend;
+      }
+      const tx = p3[0] - c2[0], ty = p3[1] - c2[1];
+      const tl = Math.hypot(tx, ty) || 1;
+      const ux = tx / tl, uy = ty / tl;
+      const end = [p3[0] - ux * 7, p3[1] - uy * 7];
+      const cls = `${e.tone ? `t-${e.tone}` : ""}${e.dash ? " dash" : ""}`;
+      lines += `<path class="${cls}" d="M${f1(p0[0])} ${f1(p0[1])}C${f1(c1[0])} ${f1(c1[1])} ${f1(c2[0])} ${f1(c2[1])} ${f1(end[0])} ${f1(end[1])}"/>`;
+      heads += `<polygon class="${e.tone ? `t-${e.tone}` : ""}" points="${f1(p3[0])},${f1(p3[1])} ${f1(end[0] - uy * 4.5)},${f1(end[1] + ux * 4.5)} ${f1(end[0] + uy * 4.5)},${f1(end[1] - ux * 4.5)}"/>`;
+      if (e.label) {
+        const m = bezPoint(p0, c1, c2, p3, 0.5);
+        labs += `<span class="edge-label${e.tone ? ` t-${e.tone}` : ""}" style="left:${f1(m[0])}px;top:${f1(m[1])}px">${esc(e.label)}</span>`;
+      }
+    });
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+    svg.setAttribute("width", W);
+    svg.setAttribute("height", H);
+    svg.innerHTML = lines + heads;
+    if (labels) labels.innerHTML = labs;
+  }
+
+  /* ---------------------------------------------------------------- mind maps */
+  const HUES = ["var(--tint)", "var(--brass)", "var(--stamp)", "var(--good)"];
+
+  function keyTerms(l) {
+    if (DATA.keys && DATA.keys[l.id]) return DATA.keys[l.id];
+    const out = [];
+    const add = (raw) => {
+      const t = raw.replace(/[.:,]$/, "").trim();
+      if (t.length > 2 && t.length <= 30 && !out.some((o) => o.toLowerCase() === t.toLowerCase())) out.push(t);
+    };
+    const scan = (str) => (str.match(/\*\*(.+?)\*\*/g) || []).forEach((m) => add(m.slice(2, -2)));
+    l.body.forEach((b) => {
+      if (typeof b === "string") scan(b);
+      else if (b.terms) b.terms.forEach(([t]) => add(t));
+      else if (b.ul) b.ul.forEach(scan);
+    });
+    return out.slice(0, 4);
+  }
+
+  function mindmapHTML(root, items) {
+    return `<div class="fig mm" data-kind="mm">
+      <svg class="edges" aria-hidden="true"></svg>
+      <div class="mm-grid">
+        <div class="mm-root"><span>${root.kicker}</span><b>${root.title}</b></div>
+        ${items.map((it, k) => `<a class="mm-node ${k % 2 === 0 ? "mm-r" : "mm-l"}${it.done ? " done" : ""}" href="#${it.href}" style="--kr:${k + 1};--kc:${k % 2 === 0 ? 2 : 1};--hue:${HUES[k % HUES.length]}">
+          <span class="mm-top"><span class="mm-num">${it.num}</span><span class="mm-meta">${it.meta}</span></span>
+          <b>${esc(it.title)}</b>
+          ${it.chips.length ? `<span class="mm-chips">${it.chips.map((c) => `<i>${esc(c)}</i>`).join("")}</span>` : ""}
+        </a>`).join("")}
+      </div>
+    </div>`;
+  }
+
+  function drawMindmap(fig) {
+    const svg = fig.querySelector(":scope > svg.edges");
+    const W = fig.clientWidth;
+    const H = fig.clientHeight;
+    const grid = fig.querySelector(".mm-grid");
+    if (!svg || !W || !grid) return;
+    const base = fig.getBoundingClientRect();
+    const wide = getComputedStyle(grid).gridTemplateColumns.trim().split(/\s+/).length > 1;
+    const root = relBox(base, fig.querySelector(".mm-root"));
+    const nodes = [...fig.querySelectorAll(".mm-node")].map((el) => ({ r: relBox(base, el), hue: el.style.getPropertyValue("--hue") }));
+    if (!nodes.length) return;
+    const tx = wide ? W / 2 : 14;
+    const rootY = root.y + root.h / 2;
+    const top = wide ? rootY : root.y + root.h;
+    let branches = "";
+    let yLast = top;
+    nodes.forEach((n) => {
+      const yc = n.r.y + 24;
+      const onLeft = n.r.x + n.r.w / 2 < tx;
+      const ex = wide && onLeft ? n.r.x + n.r.w : n.r.x;
+      const ys = yc - (wide ? 20 : 12);
+      const dx = ex - tx;
+      branches += `<path class="mm-branch" style="stroke:${n.hue}" d="M${f1(tx)} ${f1(ys)}C${f1(tx + dx * 0.55)} ${f1(ys)} ${f1(ex - dx * 0.45)} ${f1(yc)} ${f1(ex)} ${f1(yc)}"/><circle class="mm-tip" style="fill:${n.hue}" cx="${f1(ex)}" cy="${f1(yc)}" r="3.5"/>`;
+      yLast = Math.max(yLast, ys);
+    });
+    let trunk = `<path class="mm-trunk" d="M${f1(tx)} ${f1(top)}L${f1(tx)} ${f1(yLast)}"/>`;
+    if (wide) trunk += `<path class="mm-trunk" d="M${f1(root.x + root.w)} ${f1(rootY)}L${f1(tx)} ${f1(rootY)}"/>`;
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+    svg.setAttribute("width", W);
+    svg.setAttribute("height", H);
+    svg.innerHTML = `${trunk}${branches}<circle class="mm-dot" cx="${f1(tx)}" cy="${f1(top)}" r="5"/>`;
+  }
+
+  function viewMap(m) {
+    let items, root, back, backLabel, kicker, title, sub, pager = "";
+    if (m) {
+      items = m.lessons.map((l) => ({
+        href: l.id,
+        num: l.num,
+        title: l.title,
+        meta: `${l.minutes} min${S.done[l.id] ? " · learned" : ""}`,
+        chips: keyTerms(l),
+        done: !!S.done[l.id]
+      }));
+      root = { kicker: `Module ${m.code}`, title: esc(m.title) };
+      back = m.id;
+      backLabel = `Module ${m.code}`;
+      kicker = `Mind map · Module ${m.code}`;
+      title = esc(m.title);
+      sub = "Each branch is a lesson, with its key ideas. Tap a branch to open the lesson.";
+      const i = MODULES.indexOf(m);
+      const prev = MODULES[i - 1], next = MODULES[i + 1];
+      pager = `<nav class="pager map-pager" aria-label="Other mind maps">
+        ${prev ? `<a href="#map-${prev.id}"><small>Previous map</small><span>${esc(prev.title)}</span></a>` : ""}
+        ${next ? `<a class="next-link" href="#map-${next.id}"><small>Next map</small><span>${esc(next.title)}</span></a>` : ""}
+      </nav>`;
+    } else {
+      items = MODULES.map((mod) => ({
+        href: `map-${mod.id}`,
+        num: mod.code,
+        title: mod.title,
+        meta: `${modDone(mod)} of ${mod.lessons.length} lessons`,
+        chips: mod.lessons.map((l) => keyTerms(l)[0]).filter(Boolean),
+        done: modDone(mod) === mod.lessons.length
+      }));
+      root = { kicker: `${MODULES.length} modules`, title: "The London Market" };
+      back = "learn";
+      backLabel = "Learn";
+      kicker = `Course map · ${MODULES.length} modules`;
+      title = "Course map";
+      sub = "The whole course on one page. Tap a module to open its mind map.";
+    }
+    return `<div class="mapview">${mast({ back, backLabel, kicker, title, sub })}
+      <div class="wrap map-wrap">${mindmapHTML(root, items)}${pager}</div>
+    </div>`;
+  }
+
+  /* draw (and redraw on fold, rotation or resize) every figure on screen */
+  function drawFig(fig) {
+    if (fig.dataset.kind === "mm") drawMindmap(fig);
+    else if (FIGS[fig.dataset.fig]) drawEdges(fig, FIGS[fig.dataset.fig]);
+  }
+  const figObserver = "ResizeObserver" in window
+    ? new ResizeObserver((entries) => entries.forEach((en) => drawFig(en.target)))
+    : null;
+  function drawFigures() {
+    if (figObserver) figObserver.disconnect();
+    document.querySelectorAll(".fig[data-fig], .fig[data-kind='mm']").forEach((f) => {
+      drawFig(f);
+      if (figObserver) figObserver.observe(f);
+    });
+  }
+  if (!figObserver) window.addEventListener("resize", () => drawFigures());
+
   function completeHTML(l, animate) {
     const t = S.done[l.id];
     const m = l.module;
@@ -374,6 +652,8 @@
     const m = l.module;
     const prev = LESSONS[l.order - 1];
     const next = LESSONS[l.order + 1];
+    const figIds = l.body.filter((b) => b && b.fig && FIGS[b.fig]).map((b) => b.fig);
+    const sideFigs = figIds.length ? `<div class="wrap side-figs spread-only">${figIds.map(figureHTML).join("")}</div>` : "";
     const outline = `<nav class="wrap outline spread-only" aria-label="Lessons in this module">
       <h2 class="section-title">In this module</h2>
       <div class="group">${m.lessons.map((x) => `<a class="row" href="#${x.id}" style="--sep:56px"${x === l ? ' aria-current="page"' : ""}><span class="check${S.done[x.id] ? " done" : ""}">${S.done[x.id] ? icon("check") : x.num}</span><span class="row-main"><span class="row-title">${esc(x.title)}</span><span class="row-meta">${x.minutes} min</span></span></a>`).join("")}<a class="row" href="#quiz-${m.id}" style="--sep:56px"><span class="check">Q</span><span class="row-main"><span class="row-title">Module quiz</span><span class="row-meta">${m.quiz.length} questions</span></span></a></div>
@@ -386,7 +666,7 @@
       title: esc(l.title),
       sub: `${l.minutes} minute read`,
       extra: `<div class="mast-progress"><span style="width:${(l.num / m.lessons.length) * 100}%"></span></div>`
-    })}${outline}`, `<article class="wrap">
+    })}${sideFigs}${outline}`, `<article class="wrap">
       <div class="prose">${l.body.map(block).join("")}</div>
       <div class="stack">
         <section class="takeaways"><h3>Key takeaways</h3><ul>${l.takeaways.map((t) => `<li>${icon("check")}<span>${fmt(t)}</span></li>`).join("")}</ul></section>
@@ -396,7 +676,7 @@
           ${next ? `<a class="next-link" href="#${next.id}"><small>Next lesson</small><span>${esc(next.title)}</span></a>` : ""}
         </nav>
       </div>
-    </article>`)}`;
+    </article>`, sideFigs ? "has-figs" : false)}`;
   }
 
   let readTick = false;
