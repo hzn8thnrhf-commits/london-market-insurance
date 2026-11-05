@@ -542,5 +542,75 @@ window.SLIP_DATA = window.SLIP_DATA || {};
     }
   };
 
+  /* ---------------------------------------------------------------- m05 */
+  const pounds = (x) => (x >= 1e6 ? `£${r2(x / 1e6)}m` : x >= 1000 ? `£${Math.round(x / 1000).toLocaleString("en-GB")}k` : `£${Math.round(x)}`);
+  X["da-cost"] = {
+    title: "Why small risks need delegation",
+    blurb: "Shrink the premium per risk and watch open market costs swallow it.",
+    ask: "Compare the cost of placing each risk in the open market with writing it under a binding authority. Change the premium per risk and how many risks the binder writes in a year. (Illustrative costs.)",
+    inputs: [
+      { k: "prem", label: "Premium per risk", values: [500, 1000, 2500, 5000, 10000, 25000, 50000, 100000, 250000, 500000, 1000000], value: 2500, show: pounds },
+      { k: "n", label: "Risks the binder writes a year", values: [20, 50, 100, 250, 500, 1000, 2500, 5000, 10000, 20000], value: 2500, show: (x) => x.toLocaleString("en-GB") }
+    ],
+    presets: [
+      { label: "Small shops", v: { prem: 1000, n: 5000 } },
+      { label: "A refinery", v: { prem: 1000000, n: 20 } }
+    ],
+    compute(v) {
+      const open = 15 + (2500 / v.prem) * 100;
+      const da = 25 + ((100000 / v.n + 20) / v.prem) * 100;
+      const row = (label, x) => ({ label, total: `${Math.round(x)}% of premium`, segs: [[Math.min(x, 100), x > 100 ? "More than the premium" : "", x > da && x > open - 0.01 && x > 60 ? "c2" : "c1"]] });
+      let insight;
+      if (open > da) insight = `For a ${pounds(v.prem)} risk, placing it in the open market would cost about **${Math.round(open)}% of the premium**: the broker’s and underwriter’s time is worth ${open > 100 ? "more than the risk itself" : "a large slice of it"}. Under a binding authority the cost falls to about ${Math.round(da)}%, mostly the coverholder’s commission.\n\nThat is why most small, standard business reaches London through delegated authority.`;
+      else insight = `At ${pounds(v.prem)} a risk, the premium easily pays for individual underwriting: the open market costs about ${Math.round(open)}%, less than the ${Math.round(da)}% the delegated route would. Big, unusual risks justify an expert’s attention, so they stay in the open market.`;
+      if (v.n < 250) insight += `\n\nNotice the fixed cost of oversight: a binder writing only ${v.n} risks a year loads each one with ${pounds(100000 / v.n)} of audits and monitoring. Delegation pays only at volume.`;
+      return {
+        readouts: [["Open market", `${Math.round(open)}%`, open > da ? "bad" : "good"], ["Delegated", `${Math.round(da)}%`, da > open ? "bad" : "good"]],
+        chart: {
+          type: "bars",
+          scale: 100,
+          ticks: [0, 25, 50, 75, 100],
+          suffix: "%",
+          rows: [row("Open market: brokerage and handling", open), row("Delegated: commission and oversight", da)]
+        },
+        insight
+      };
+    }
+  };
+
+  X["bdx-lag"] = {
+    title: "What late bordereaux hide",
+    blurb: "Delay the reports and watch the insurer’s blind spot grow before a hurricane.",
+    ask: "A coverholder binds homes on the Florida coast every month, and a hurricane strikes at the end of the year. Change how much it binds, how late its bordereaux arrive and how many records lack key data.",
+    inputs: [
+      { k: "monthly", label: "Sum insured bound each month", min: 10, max: 100, step: 5, value: 40, unit: "m" },
+      { k: "lag", label: "Bordereaux arrive", min: 0, max: 4, step: 1, value: 2, show: (x) => (x === 0 ? "On time" : `${x} month${x > 1 ? "s" : ""} late`) },
+      { k: "bad", label: "Records missing locations or values", min: 0, max: 40, step: 5, value: 10, unit: "pct" }
+    ],
+    compute(v, H) {
+      const total = v.monthly * 12;
+      const reported = v.monthly * (12 - v.lag);
+      const unusable = (reported * v.bad) / 100;
+      const visible = reported - unusable;
+      const late = total - reported;
+      const blind = late + unusable;
+      const insight = blind < 0.01
+        ? `Timely, complete bordereaux: when the hurricane strikes, the insurer can see every one of the ${H.fmtM(total)} of homes bound, and can model its loss straight away.`
+        : `When the hurricane strikes, the coverholder has bound ${H.fmtM(total)} of homes, but the insurer can see only ${H.fmtM(visible)}. **${H.fmtM(blind)}, ${Math.round((blind / total) * 100)}% of the exposure, is a blind spot**: ${H.fmtM(late)} not yet reported and ${H.fmtM(unusable)} reported without the data needed to model it.\n\nAn insurer can’t manage an accumulation it can’t see. That is why timely, structured data matters so much in delegated business.`;
+      return {
+        readouts: [["Insurer can see", H.fmtM(visible)], ["Blind spot", H.fmtM(blind), blind > 0.01 ? "bad" : "good"]],
+        chart: {
+          type: "bars",
+          scale: 100,
+          ticks: [0, 25, 50, 75, 100],
+          suffix: "%",
+          rows: [{ label: "Exposure on the day of the hurricane", total: H.fmtM(total), segs: [[(visible / total) * 100, "Visible", "c1"], [(unusable / total) * 100, "", "hatch"], [(late / total) * 100, "", "c2"]] }],
+          legend: [["c1", "Reported and usable"], ["hatch", "Reported, unusable"], ["c2", "Not yet reported"]]
+        },
+        insight
+      };
+    }
+  };
+
   window.SLIP_DATA.explore = Object.assign(window.SLIP_DATA.explore || {}, X);
 })();
