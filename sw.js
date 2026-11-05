@@ -1,10 +1,25 @@
 /* The Slip — offline support. Bump VERSION whenever app files change. */
-const VERSION = "the-slip-v3";
+const VERSION = "the-slip-v4";
 const SHELL = [
   "./",
   "index.html",
   "css/app.css",
-  "js/content.js",
+  "js/course.js",
+  "js/modules/m01.js",
+  "js/modules/m02.js",
+  "js/modules/m03.js",
+  "js/modules/m04.js",
+  "js/modules/m05.js",
+  "js/modules/m06.js",
+  "js/modules/m07.js",
+  "js/modules/m08.js",
+  "js/modules/m09.js",
+  "js/modules/m10.js",
+  "js/modules/m11.js",
+  "js/modules/m12.js",
+  "js/modules/m13.js",
+  "js/modules/m14.js",
+  "js/modules/m15.js",
   "js/glossary.js",
   "js/figures.js",
   "js/app.js",

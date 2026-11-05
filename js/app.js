@@ -3,7 +3,16 @@
   "use strict";
 
   const DATA = window.SLIP_DATA;
-  const MODULES = DATA.modules;
+  const BY_ID = {};
+  (DATA.modules || []).forEach((m) => { BY_ID[m.id] = m; });
+  const PARTS = ((DATA.course && DATA.course.parts) || [{ title: "Course", modules: (DATA.modules || []).map((m) => m.id) }])
+    .map((p, pi) => ({ title: p.title, num: pi + 1, modules: p.modules.map((id) => BY_ID[id]).filter(Boolean) }));
+  const MODULES = [];
+  PARTS.forEach((p) => p.modules.forEach((m) => {
+    m.part = p;
+    m.code = String(MODULES.length + 1).padStart(2, "0");
+    MODULES.push(m);
+  }));
   const MOD = {};
   const LESSONS = [];
   const LESSON = {};
@@ -20,6 +29,21 @@
     });
   });
 
+  const plainBlock = (b) => {
+    if (typeof b === "string") return b;
+    if (b.h) return b.h;
+    if (b.ul || b.ol) return (b.ul || b.ol).join(" ");
+    if (b.terms) return b.terms.map((t) => t.join(" ")).join(" ");
+    if (b.example) return `${b.example.title || ""} ${b.example.text}`;
+    if (b.think) return `${b.think.q} ${b.think.a}`;
+    if (b.table) return b.table.rows.map((r) => r.join(" ")).join(" ");
+    if (b.timeline || b.chain) return (b.timeline || b.chain).map((t) => t.join(" ")).join(" ");
+    return b.analogy || b.note || b.aware || b.text || "";
+  };
+  LESSONS.forEach((l) => {
+    l.text = `${l.title}. ${l.body.map(plainBlock).join(" ")} ${l.takeaways.join(" ")}`.replace(/\*\*/g, "").replace(/\s+/g, " ");
+  });
+
   const slug = (s) => s.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   const GLOSSARY = DATA.glossary
     .map(([term, def, mod]) => ({ id: slug(term), term, def, mod }))
@@ -28,7 +52,9 @@
   /* ---------------------------------------------------------------- utils */
   const esc = (s) =>
     String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
-  const fmt = (s) => esc(s).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+  const fmt = (s) => esc(s)
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/(^|[^*\w])\*([^*\n]+?)\*(?![*\w])/g, "$1<em>$2</em>");
   const $ = (sel) => document.querySelector(sel);
   const shuffle = (arr) => {
     const a = arr.slice();
@@ -74,7 +100,7 @@
 
   /* ---------------------------------------------------------------- state */
   const KEY = "the-slip/v1";
-  const blank = () => ({ done: {}, quiz: {}, cards: {}, days: [], qa: { n: 0, c: 0 }, final: null });
+  const blank = () => ({ done: {}, quiz: {}, cards: {}, days: [], qa: { n: 0, c: 0 }, final: null, missed: {}, text: "m" });
   const load = () => {
     try {
       const raw = localStorage.getItem(KEY);
@@ -86,6 +112,8 @@
     return blank();
   };
   let S = load();
+  const applyTextSize = () => { document.documentElement.dataset.text = S.text || "m"; };
+  applyTextSize();
   const save = () => {
     try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* ignore */ }
   };
@@ -135,7 +163,7 @@
     if ((m = h.match(/^(m\d\d)$/)) && MOD[m[1]]) return { tab: "learn", html: () => viewModule(MOD[m[1]]) };
     if ((m = h.match(/^(m\d\d-l\d+)$/)) && LESSON[m[1]]) return { tab: "learn", html: () => viewLesson(LESSON[m[1]]), lesson: true };
     if (h === "practice") return { tab: "practice", html: viewPractice };
-    if ((m = h.match(/^quiz-(quick|m\d\d)$/)) && (m[1] === "quick" || MOD[m[1]])) return { tab: "practice", html: () => viewQuiz(m[1]), top: true };
+    if ((m = h.match(/^quiz-(quick|review|m\d\d)$/)) && (m[1] === "quick" || m[1] === "review" || MOD[m[1]])) return { tab: "practice", html: () => viewQuiz(m[1]), top: true };
     if (h === "cards") return { tab: "practice", html: viewCards, top: true };
     if (h === "glossary") return { tab: "glossary", html: viewGlossary };
     if (h === "lab") return { tab: "lab", html: viewLab };
@@ -269,6 +297,13 @@
         </div>
       </section>
 
+      <section class="section"><h2 class="section-title">Reading</h2>
+        <div class="group textsize" role="group" aria-label="Lesson text size">
+          ${[["s", "Smaller"], ["m", "Standard"], ["l", "Larger"], ["xl", "Largest"]].map(([k, t]) => `<button type="button" data-act="textsize" data-size="${k}" aria-pressed="${(S.text || "m") === k}"><span class="ts-${k}">Aa</span><small>${t}</small></button>`).join("")}
+        </div>
+        <p class="section-foot">Changes the size of lesson text. The app also uses your iPhone’s own font, San Francisco.</p>
+      </section>
+
       <section class="section about">
         <p>Your progress is saved on this device only.</p>
         <p>The Slip is a learning aid, not legal or professional advice. Market practice and rules change, so check current sources before relying on a detail at work.</p>
@@ -279,7 +314,7 @@
 
   /* ---------------------------------------------------------------- learn */
   function viewLearn() {
-    const rows = MODULES.map((m) => {
+    const rowOf = (m) => {
       const d = modDone(m);
       const n = m.lessons.length;
       const q = S.quiz[m.id];
@@ -292,13 +327,18 @@
           <span class="minibar"><span style="width:${(d / n) * 100}%"></span></span>
         </span>${chev}
       </a>`;
-    }).join("");
+    };
+    const parts = PARTS.filter((p) => p.modules.length).map((p) => `<section class="section">
+        <h2 class="section-title">Part ${p.num} · ${esc(p.title)}</h2>
+        <div class="group">${p.modules.map(rowOf).join("")}</div>
+      </section>`).join("");
+    const mins = LESSONS.reduce((a, l) => a + l.minutes, 0);
     return spread(`${mast({
-      kicker: `${MODULES.length} modules · ${LESSONS.length} lessons`,
+      kicker: `${MODULES.length} modules · ${LESSONS.length} lessons · about ${Math.round(mins / 60)} hours`,
       title: "Learn",
-      sub: "The course runs from the basics to today’s market. Go in order, or jump to what you need.",
+      sub: "The course is arranged in parts, from how the market works to running an insurance business. Work through it in order, or go straight to what you need.",
       extra: mapBtn("map", "Course map")
-    })}`, `<div class="wrap stack"><div class="group">${rows}</div></div>`, true);
+    })}`, `<div class="wrap stack">${parts}</div>`, true);
   }
 
   function viewModule(m) {
@@ -315,11 +355,12 @@
     return spread(`${mast({
       back: "learn",
       backLabel: "Learn",
-      kicker: `Module ${m.code} · ${m.lessons.length} lessons · ${mins} min`,
+      kicker: `Part ${m.part.num} · Module ${m.code} · ${m.lessons.length} lessons · ${mins} min`,
       title: esc(m.title),
       sub: esc(m.blurb),
       extra: `<span class="cover-mark spread-only" aria-hidden="true">${m.code}</span>${mapBtn(`map-${m.id}`, "Mind map")}`
     })}`, `<div class="wrap stack">
+      ${m.outcomes ? `<section class="section"><h2 class="section-title">Learning outcomes</h2><div class="outcomes"><p>By the end of this module you should be able to:</p><ul>${m.outcomes.map((o) => `<li>${fmt(o)}</li>`).join("")}</ul></div></section>` : ""}
       <section class="section"><h2 class="section-title">Lessons</h2><div class="group">${rows}</div></section>
       <section class="section"><h2 class="section-title">Check yourself</h2>
         <div class="group"><a class="row" href="#quiz-${m.id}" style="--sep:70px">
@@ -343,6 +384,10 @@
     if (b.analogy) return `<aside class="callout analogy"><div class="callout-label"><span class="glyph" aria-hidden="true">≈</span>Think of it like this</div><p>${fmt(b.analogy)}</p></aside>`;
     if (b.example) return `<aside class="callout example"><div class="callout-label">${esc(b.example.title || "Worked example")}</div><p>${fmt(b.example.text)}</p></aside>`;
     if (b.note) return `<aside class="callout note"><div class="callout-label">In practice</div><p>${fmt(b.note)}</p></aside>`;
+    if (b.aware) return `<aside class="callout aware"><div class="callout-label">Be aware</div><p>${fmt(b.aware)}</p></aside>`;
+    if (b.think) {
+      return `<details class="callout think"><summary><span class="callout-label">Consider this</span><span class="think-q">${fmt(b.think.q)}</span><span class="think-cta">Show the answer</span></summary><p>${fmt(b.think.a)}</p></details>`;
+    }
     if (b.table) {
       const { head, rows } = b.table;
       return `<div class="table-wrap"><table><thead><tr>${head.map((h) => `<th scope="col">${fmt(h)}</th>`).join("")}</tr></thead><tbody>${rows
@@ -394,8 +439,13 @@
         <div class="bars-head"><b>${esc(r.label)}</b><span>${esc(r.total)}</span></div>
         <div class="bars-track"><div class="bars-fill">${r.segs.map(([v, t, tone]) => `<span class="seg s-${tone}" style="width:${(v / spec.scale) * 100}%"><em>${esc(t)}</em></span>`).join("")}</div>${spec.mark ? `<i class="bars-mark" style="left:${(spec.mark[0] / spec.scale) * 100}%">${ri === last ? `<em>${esc(spec.mark[1])}</em>` : ""}</i>` : ""}</div>
       </div>`).join("");
-      return `<div class="fig bars${spec.mark ? " has-mark" : ""}">${rows}</div>${legendHTML(spec.legend)}`;
+      const ticks = spec.ticks ? `<div class="bars-ticks" aria-hidden="true">${spec.ticks.map((t) => `<span style="left:${(t / spec.scale) * 100}%">${esc(`${spec.prefix || ""}${t}${spec.suffix || ""}`)}</span>`).join("")}</div>` : "";
+      return `<div class="fig bars${spec.mark ? " has-mark" : ""}">${rows}${ticks}</div>${legendHTML(spec.legend)}`;
     }
+    if (spec.type === "stack") return stackBody(spec);
+    if (spec.type === "waterfall") return waterfallBody(spec);
+    if (spec.type === "line") return lineBody(spec);
+    if (spec.type === "quadrant") return quadrantBody(spec);
     if (spec.type === "timeline") {
       const x = (v) => ((v - spec.from) / (spec.to - spec.from)) * 100;
       const rows = spec.rows.map((r) => {
@@ -406,13 +456,131 @@
           .map(([a, b, tone, t]) => `<span class="seg s-${tone}" style="flex:${b - a}">${t ? `<em>${esc(t)}</em>` : ""}</span>`)
           .join("")}</div></div></div>`;
       }).join("");
-      const ticks = spec.ticks.map((t) => `<span style="left:${x(t)}%">${t}</span>`).join("");
+      const ticks = spec.ticks.map((t, i) => `<span style="left:${x(t)}%">${esc(spec.tickLabels ? spec.tickLabels[i] : t)}</span>`).join("");
       const markers = (spec.markers || []).map(([at, t]) => `<i class="tl-marker" style="left:${x(at)}%"><em>${esc(t)}</em></i>`).join("");
       return `<div class="fig tl${markers ? " has-markers" : ""}" data-fig="${id}"><svg class="edges" aria-hidden="true"></svg>
         <div class="tl-body">${markers ? `<div class="tl-markers" aria-hidden="true">${markers}</div>` : ""}${rows}<div class="tl-row tl-axis"><span class="tl-label"></span><div class="tl-track">${ticks}</div></div></div>
         <div class="edge-labels" aria-hidden="true"></div></div>${legendHTML(spec.legend)}`;
     }
     return "";
+  }
+
+  const SERIES = { c1: "var(--c1)", c2: "var(--c2)", c3: "var(--c3)", c4: "var(--c4)", neutral: "var(--ink-3)", ink: "var(--ink-2)" };
+
+  /* a tower of layers, drawn to scale (or as equal bands) */
+  function stackBody(spec) {
+    if (spec.equal) {
+      return `<div class="fig stk-eq">${spec.layers.slice().reverse().map((L) => `<div class="stk-band s-${L.tone || "c1"}"><b>${esc(L.label)}</b>${L.sub ? `<span>${esc(L.sub)}</span>` : ""}</div>`).join("")}</div>`;
+    }
+    const y = (v) => (v / spec.max) * 100;
+    const tick = (t) => `${spec.prefix || ""}${t}${spec.suffix || ""}`;
+    return `<div class="fig stk">
+      <div class="stk-axis" aria-hidden="true">${spec.ticks.map((t) => `<span style="bottom:${y(t)}%">${esc(tick(t))}</span>`).join("")}</div>
+      <div class="stk-bar" aria-hidden="true">${spec.layers.map((L) => `<div class="stk-layer s-${L.tone || "c1"}" style="bottom:${y(L.from)}%;height:${y(L.to - L.from)}%"></div>`).join("")}</div>
+      <div class="stk-labels">${spec.layers.map((L) => `<div class="stk-label" style="bottom:${y((L.from + L.to) / 2)}%"><b>${esc(L.label)}</b>${L.sub ? `<span>${esc(L.sub)}</span>` : ""}</div>`).join("")}</div>
+    </div>`;
+  }
+
+  /* horizontal waterfall: cumulative steps, or diverging bars from zero */
+  function waterfallBody(spec) {
+    let run = 0;
+    const rows = spec.steps.map((st) => {
+      let a, b, v;
+      if (spec.diverging) { v = st.value; a = Math.min(0, v); b = Math.max(0, v); }
+      else if (st.total) { if (st.value !== undefined) run = st.value; v = run; a = Math.min(0, run); b = Math.max(0, run); }
+      else { v = st.value; a = Math.min(run, run + v); b = Math.max(run, run + v); run += v; }
+      return { st, a, b, v };
+    });
+    const lo = Math.min(0, ...rows.map((r) => r.a)) * 1.35;
+    const hi = Math.max(0, ...rows.map((r) => r.b)) * 1.24;
+    const span = hi - lo || 1;
+    const pos = (v) => ((v - lo) / span) * 100;
+    const show = (v, total) => {
+      const a = Math.abs(v);
+      const n = spec.dp !== undefined ? a.toFixed(spec.dp) : Number.isInteger(a) ? String(a) : a.toFixed(1);
+      const sign = v < 0 ? "−" : total ? "" : "+";
+      return `${sign}${spec.prefix || ""}${n}${spec.suffix || ""}`;
+    };
+    const body = rows.map(({ st, a, b, v }) => {
+      const tone = st.total ? "total" : v < 0 ? "down" : "up";
+      const neg = spec.diverging && v < 0;
+      const inside = !neg && pos(b) > 70 && pos(b) - pos(a) > 24;
+      return `<div class="wf-row"><span class="wf-label">${esc(st.label)}</span><div class="wf-track">${spec.diverging ? `<i class="wf-zero" style="left:${f1(pos(0))}%"></i>` : ""}<span class="wf-bar wf-${tone}" style="left:${f1(pos(a))}%;width:${f1(Math.max(0.8, pos(b) - pos(a)))}%" title="${esc(st.label)}: ${show(v, st.total)}"></span><em class="wf-val${neg ? " neg" : ""}${inside ? ` in on-${tone}` : ""}" style="left:${f1(neg ? pos(a) : pos(b))}%">${show(v, st.total)}</em></div>${st.note ? `<span class="wf-note">${esc(st.note)}</span>` : ""}</div>`;
+    }).join("");
+    const legend = spec.legend === false ? "" : legendHTML(spec.legend || (spec.diverging ? [["c1", "Profit"], ["c2", "Loss"]] : [["c1", "Adds"], ["c2", "Takes away"], ["total", "Total"]]));
+    return `<div class="fig wf">${body}</div>${legend}`;
+  }
+
+  /* line chart drawn to scale in SVG, with optional log x-axis, bands, reference lines and marked points */
+  function lineBody(spec) {
+    const W = 360, H = spec.height || 220;
+    const X0 = 42, X1 = W - (spec.padRight || 18), Y0 = H - 34, Y1 = 18;
+    const lg = Math.log;
+    const xs = spec.x.log
+      ? (v) => X0 + ((lg(v) - lg(spec.x.min)) / (lg(spec.x.max) - lg(spec.x.min))) * (X1 - X0)
+      : (v) => X0 + ((v - spec.x.min) / (spec.x.max - spec.x.min)) * (X1 - X0);
+    const ys = (v) => Y0 - ((v - spec.y.min) / (spec.y.max - spec.y.min)) * (Y0 - Y1);
+    const lab = (ax, v, i) => (ax.labels && i >= 0 ? ax.labels[i] : `${ax.prefix || ""}${v}${ax.suffix || ""}`);
+    let g = "";
+    (spec.bands || []).forEach((b) => {
+      g += `<rect class="ch-band" x="${X0}" y="${f1(ys(b.to))}" width="${X1 - X0}" height="${f1(ys(b.from) - ys(b.to))}" style="fill:${SERIES[b.tone || "c1"]}"/>`;
+      if (b.label) g += `<text class="ch-sub" x="${X0 + 6}" y="${f1(ys(b.to) + 13)}">${esc(b.label)}</text>`;
+    });
+    spec.y.ticks.forEach((v, i) => {
+      g += `<line class="ch-grid" x1="${X0}" x2="${X1}" y1="${f1(ys(v))}" y2="${f1(ys(v))}"/><text class="ch-tick" x="${X0 - 6}" y="${f1(ys(v) + 3.5)}" text-anchor="end">${esc(lab(spec.y, v, i))}</text>`;
+    });
+    g += `<line class="ch-axis" x1="${X0}" x2="${X1}" y1="${Y0}" y2="${Y0}"/>`;
+    spec.x.ticks.forEach((v, i) => {
+      g += `<text class="ch-tick" x="${f1(xs(v))}" y="${Y0 + 15}" text-anchor="middle">${esc(lab(spec.x, v, i))}</text>`;
+    });
+    if (spec.x.title) g += `<text class="ch-title" x="${(X0 + X1) / 2}" y="${H - 4}" text-anchor="middle">${esc(spec.x.title)}</text>`;
+    if (spec.y.title) g += `<text class="ch-title" x="4" y="${Y1 - 7}">${esc(spec.y.title)}</text>`;
+    (spec.refs || []).forEach((r) => {
+      if (r.y !== undefined) g += `<line class="ch-ref" x1="${X0}" x2="${X1}" y1="${f1(ys(r.y))}" y2="${f1(ys(r.y))}"/><text class="ch-sub" x="${r.align === "start" ? X0 + 6 : X1}" y="${f1(ys(r.y) - 5)}" text-anchor="${r.align === "start" ? "start" : "end"}">${esc(r.label)}</text>`;
+      if (r.x !== undefined) g += `<line class="ch-ref" x1="${f1(xs(r.x))}" x2="${f1(xs(r.x))}" y1="${Y1}" y2="${Y0}"/><text class="ch-sub" x="${f1(xs(r.x) + 4)}" y="${Y1 + 9}">${esc(r.label)}</text>`;
+    });
+    spec.series.forEach((sr) => {
+      const col = SERIES[sr.tone || "c1"];
+      const d = sr.points.map(([x, y], i) => `${i ? "L" : "M"}${f1(xs(x))} ${f1(ys(y))}`).join("");
+      g += `<path class="ch-line" d="${d}" style="stroke:${col}${sr.dash ? ";stroke-dasharray:5 4" : ""}"/>`;
+      sr.points.forEach(([x, y]) => {
+        g += `<circle cx="${f1(xs(x))}" cy="${f1(ys(y))}" r="9" fill="transparent"><title>${esc(sr.name)} · ${esc(lab(spec.x, x, spec.x.ticks.indexOf(x)))}: ${esc(`${spec.y.prefix || ""}${y}${spec.y.suffix || ""}`)}</title></circle>`;
+      });
+      if (sr.endLabel) {
+        const [x, y] = sr.points[sr.points.length - 1];
+        g += `<text class="ch-lab" x="${f1(xs(x) + 6)}" y="${f1(ys(y) + (sr.endDy || 4))}">${esc(sr.endLabel)}</text>`;
+      }
+    });
+    (spec.marks || []).forEach((mk) => {
+      const cx = xs(mk.x), cy = ys(mk.y);
+      g += `<circle class="ch-dot" cx="${f1(cx)}" cy="${f1(cy)}" r="4.5" style="fill:${SERIES[mk.tone || "c1"]}"/>`;
+      if (mk.label) g += `<text class="ch-lab" x="${f1(cx + (mk.dx === undefined ? 8 : mk.dx))}" y="${f1(cy + (mk.dy === undefined ? -8 : mk.dy))}" text-anchor="${mk.anchor || "start"}">${esc(mk.label)}</text>`;
+    });
+    const legend = spec.series.length > 1 ? legendHTML(spec.series.map((sr) => [sr.tone || "c1", sr.name])) : "";
+    return `<div class="fig chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(spec.title)}">${g}</svg></div>${legend}`;
+  }
+
+  /* 2 x 2 matrix with plotted segments */
+  function quadrantBody(spec) {
+    const W = 360, H = 276;
+    const X0 = 42, X1 = W - 14, Y0 = H - 34, Y1 = 22;
+    const xs = (v) => X0 + ((v - spec.x.min) / (spec.x.max - spec.x.min)) * (X1 - X0);
+    const ys = (v) => Y0 - ((v - spec.y.min) / (spec.y.max - spec.y.min)) * (Y0 - Y1);
+    const cx = xs(spec.x.split), cy = ys(spec.y.split);
+    let g = `<rect class="ch-quad" x="${X0}" y="${Y1}" width="${f1(cx - X0)}" height="${f1(cy - Y1)}"/>`;
+    g += `<rect x="${X0}" y="${Y1}" width="${X1 - X0}" height="${Y0 - Y1}" fill="none" class="ch-axis"/>`;
+    g += `<line class="ch-ref" x1="${f1(cx)}" x2="${f1(cx)}" y1="${Y1}" y2="${Y0}"/><line class="ch-ref" x1="${X0}" x2="${X1}" y1="${f1(cy)}" y2="${f1(cy)}"/>`;
+    spec.x.ticks.forEach((v) => { g += `<text class="ch-tick" x="${f1(xs(v))}" y="${Y0 + 15}" text-anchor="middle">${v}${spec.x.suffix || ""}</text>`; });
+    spec.y.ticks.forEach((v) => { g += `<text class="ch-tick" x="${X0 - 6}" y="${f1(ys(v) + 3.5)}" text-anchor="end">${v > 0 ? "+" : v < 0 ? "−" : ""}${Math.abs(v)}${spec.y.suffix || ""}</text>`; });
+    g += `<text class="ch-title" x="${(X0 + X1) / 2}" y="${H - 4}" text-anchor="middle">${esc(spec.x.title)}</text><text class="ch-title" x="4" y="${Y1 - 4}" dy="-2">${esc(spec.y.title)}</text>`;
+    const q = spec.quadrants;
+    g += `<text class="ch-qlab" x="${X0 + 6}" y="${Y1 + 13}">${esc(q.tl)}</text><text class="ch-qlab" x="${X1 - 6}" y="${Y1 + 13}" text-anchor="end">${esc(q.tr)}</text><text class="ch-qlab" x="${X0 + 6}" y="${Y0 - 7}">${esc(q.bl)}</text><text class="ch-qlab" x="${X1 - 6}" y="${Y0 - 7}" text-anchor="end">${esc(q.br)}</text>`;
+    spec.points.forEach((p) => {
+      const px = xs(p.x), py = ys(p.y);
+      g += `<circle class="ch-dot" cx="${f1(px)}" cy="${f1(py)}" r="5.5" style="fill:${SERIES[p.tone || "c1"]}"><title>${esc(p.label)}: ${p.x}${spec.x.suffix || ""} price adequacy, ${p.y > 0 ? "+" : ""}${p.y}${spec.y.suffix || ""} growth</title></circle>`;
+      g += `<text class="ch-lab" x="${f1(px + (p.dx === undefined ? 9 : p.dx))}" y="${f1(py + (p.dy === undefined ? 4 : p.dy))}" text-anchor="${p.anchor || "start"}">${esc(p.label)}</text>`;
+    });
+    return `<div class="fig chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(spec.title)}">${g}</svg></div>`;
   }
 
   function figureHTML(id) {
@@ -509,7 +677,7 @@
   const HUES = ["var(--tint)", "var(--brass)", "var(--stamp)", "var(--good)"];
 
   function keyTerms(l) {
-    if (DATA.keys && DATA.keys[l.id]) return DATA.keys[l.id];
+    if (l.keys) return l.keys;
     const out = [];
     const add = (raw) => {
       const t = raw.replace(/[.:,]$/, "").trim();
@@ -600,7 +768,7 @@
         num: mod.code,
         title: mod.title,
         meta: `${modDone(mod)} of ${mod.lessons.length} lessons`,
-        chips: mod.lessons.map((l) => keyTerms(l)[0]).filter(Boolean),
+        chips: mod.lessons.map((l) => keyTerms(l)[0]).filter(Boolean).slice(0, 5),
         done: modDone(mod) === mod.lessons.length
       }));
       root = { kicker: `${MODULES.length} modules`, title: "The London Market" };
@@ -669,7 +837,7 @@
     })}${sideFigs}${outline}`, `<article class="wrap">
       <div class="prose">${l.body.map(block).join("")}</div>
       <div class="stack">
-        <section class="takeaways"><h3>Key takeaways</h3><ul>${l.takeaways.map((t) => `<li>${icon("check")}<span>${fmt(t)}</span></li>`).join("")}</ul></section>
+        <section class="takeaways"><h3>Key points</h3><ul>${l.takeaways.map((t) => `<li>${icon("check")}<span>${fmt(t)}</span></li>`).join("")}</ul></section>
         <div class="complete" id="complete">${completeHTML(l, false)}</div>
         <nav class="pager" aria-label="Lessons">
           ${prev ? `<a href="#${prev.id}"><small>Previous</small><span>${esc(prev.title)}</span></a>` : ""}
@@ -695,10 +863,14 @@
 
   /* ---------------------------------------------------------------- quizzes */
   let quizRun = null;
+  MODULES.forEach((m) => m.quiz.forEach((q, i) => { q.qid = `${m.id}-q${i + 1}`; }));
   const ALL_Q = MODULES.flatMap((m) => m.quiz.map((q) => Object.assign({ m }, q)));
 
   function startQuiz(id) {
-    const pool = id === "quick" ? shuffle(ALL_Q).slice(0, 10) : MOD[id].quiz.map((q) => Object.assign({ m: MOD[id] }, q));
+    let pool;
+    if (id === "quick") pool = shuffle(ALL_Q).slice(0, 10);
+    else if (id === "review") pool = shuffle(ALL_Q.filter((q) => S.missed[q.qid])).slice(0, 10);
+    else pool = MOD[id].quiz.map((q) => Object.assign({ m: MOD[id] }, q));
     quizRun = {
       id,
       done: false,
@@ -710,11 +882,14 @@
   function viewQuiz(id) {
     if (!quizRun || quizRun.id !== id) startQuiz(id);
     const r = quizRun;
-    const quick = id === "quick";
+    const quick = id === "quick" || id === "review";
     const m = quick ? null : MOD[id];
     const back = quick ? "practice" : m.id;
     const backLabel = quick ? "Practice" : `Module ${m.code}`;
-    const title = quick ? "Quick-fire" : `${esc(m.title)} quiz`;
+    const title = id === "review" ? "Revise your mistakes" : quick ? "Quick-fire" : `${esc(m.title)} quiz`;
+    if (!r.items.length) {
+      return spread(`${mast({ back, backLabel, kicker: "Nothing to revise", title })}`, `<div class="wrap stack"><div class="panel"><h3>No mistakes to revise.</h3><p>Questions you answer wrongly in any quiz are collected here, and drop out once you answer them correctly.</p><a class="btn block" href="#quiz-quick">Try a quick-fire quiz</a></div></div>`, true);
+    }
     const pips = `<div class="pips" aria-hidden="true">${r.items
       .map((it, i) => `<span class="pip${it.pick !== null ? (it.opts[it.pick].ok ? " ok" : " no") : i === r.i && !r.done ? " now" : ""}"></span>`)
       .join("")}</div>`;
@@ -735,8 +910,8 @@
       return spread(`${mast({ back, backLabel, kicker: "Result", title, extra: pips })}
       <div class="wrap stack">
         <div class="score">
-          <div><b>${score}/${n}</b><small>${passed ? (quick ? "Passed. Your slip’s final box is signed." : "Passed. Pass mark is 80%.") : "Pass mark is 80%. Read the explanations below, then try again."}</small></div>
-          ${passed ? `<span class="stamp big animate"><strong>Passed</strong><span>${fmtDate(Date.now())}</span></span>` : ""}
+          <div><b>${score}/${n}</b><small>${id === "review" ? (score === n ? "All corrected. These questions have left your revision list." : "Correct answers leave your revision list; the rest stay for next time.") : passed ? (quick ? "Passed. Your slip’s final box is signed." : "Passed. The pass mark is 80%.") : "The pass mark is 80%. Read the explanations below, then try again."}</small></div>
+          ${passed && id !== "review" ? `<span class="stamp big animate"><strong>Passed</strong><span>${fmtDate(Date.now())}</span></span>` : ""}
         </div>
         <div class="btn-row"><button class="btn" type="button" data-act="retry">${quick ? "New questions" : "Try again"}</button><a class="btn quiet" href="#${back}">Done</a></div>
       </div>`, `<div class="wrap stack">
@@ -775,6 +950,8 @@
     const score = r.items.filter((it) => it.opts[it.pick].ok).length;
     if (r.id === "quick") {
       S.final = Math.max(S.final === null ? 0 : S.final, score);
+    } else if (r.id === "review") {
+      /* mistakes are updated answer by answer */
     } else {
       const prev = S.quiz[r.id];
       S.quiz[r.id] = { best: Math.max(prev ? prev.best : 0, score), total: r.items.length, last: score, at: Date.now() };
@@ -794,6 +971,8 @@
     });
     return { fresh, learning, mastered };
   }
+
+  const missedCount = () => Object.keys(S.missed || {}).filter((k) => ALL_Q.some((q) => q.qid === k)).length;
 
   function viewPractice() {
     const dc = deckCounts();
@@ -816,6 +995,14 @@
           <a class="btn block" href="#quiz-quick">Start quick-fire</a>
         </div>
       </section>
+      ${missedCount() ? `<section class="section"><h2 class="section-title">Revise your mistakes</h2>
+        <div class="panel">
+          <p class="row-meta">${missedCount()} question${missedCount() === 1 ? "" : "s"} to revise</p>
+          <h3>Questions you got wrong</h3>
+          <p>Up to ten of them at a time. Each one leaves the list once you answer it correctly.</p>
+          <a class="btn block" href="#quiz-review">Revise now</a>
+        </div>
+      </section>` : ""}
       <section class="section"><h2 class="section-title">Flashcards</h2>
         <div class="group deck-stats stats">
           <div class="stat"><b>${dc.fresh}</b><span>new</span></div>
@@ -909,18 +1096,37 @@
 
   /* ---------------------------------------------------------------- glossary */
   let glossQ = "";
+  function snippet(text, needle) {
+    const i = text.toLowerCase().indexOf(needle);
+    if (i < 0) return esc(text.slice(0, 110)) + "…";
+    let a = Math.max(0, i - 50);
+    if (a > 0) { const sp = text.indexOf(" ", a); if (sp > -1 && sp < i) a = sp + 1; }
+    let b = Math.min(text.length, i + needle.length + 70);
+    if (b < text.length) { const sp = text.lastIndexOf(" ", b); if (sp > i + needle.length) b = sp; }
+    return `${a > 0 ? "…" : ""}${esc(text.slice(a, i))}<mark>${esc(text.slice(i, i + needle.length))}</mark>${esc(text.slice(i + needle.length, b))}${b < text.length ? "…" : ""}`;
+  }
+  function lessonHits(needle) {
+    if (needle.length < 2) return "";
+    const hits = LESSONS.filter((l) => l.text.toLowerCase().includes(needle))
+      .sort((x, y) => (y.title.toLowerCase().includes(needle) ? 1 : 0) - (x.title.toLowerCase().includes(needle) ? 1 : 0));
+    if (!hits.length) return "";
+    const shown = hits.slice(0, 8);
+    return `<p class="g-letter">In lessons · ${hits.length}</p><div class="group">${shown.map((l) => `<a class="row" href="#${l.id}">
+      <span class="row-main"><span class="row-title">${esc(l.title)}</span><span class="row-sub search-snip">${snippet(l.text, needle)}</span><span class="row-meta">Module ${l.module.code} · ${esc(l.module.title)}</span></span>${chev}</a>`).join("")}</div>${hits.length > shown.length ? `<p class="section-foot">Showing the first ${shown.length}. Add another word to narrow the search.</p>` : ""}`;
+  }
   function glossList(q) {
     const needle = q.trim().toLowerCase();
     const items = needle
       ? GLOSSARY.filter((g) => g.term.toLowerCase().includes(needle) || g.def.toLowerCase().includes(needle))
       : GLOSSARY;
-    if (!items.length) return `<p class="empty">No terms match “${esc(q.trim())}”. Try a shorter word.</p>`;
+    const lessonsHTML = lessonHits(needle);
+    if (!items.length && !lessonsHTML) return `<p class="empty">Nothing matches “${esc(q.trim())}”. Try a shorter or different word.</p>`;
     const groups = {};
     items.forEach((g) => {
       const L = g.term[0].toUpperCase();
       (groups[L] = groups[L] || []).push(g);
     });
-    return Object.keys(groups).map((L) => `<p class="g-letter" id="g-${L}">${L}</p><dl class="group g-list">${groups[L]
+    return lessonsHTML + (needle && items.length ? `<p class="g-letter">Glossary terms · ${items.length}</p>` : "") + Object.keys(groups).map((L) => `<p class="g-letter" id="g-${L}">${L}</p><dl class="group g-list">${groups[L]
       .map((g) => {
         const m = MOD[g.mod];
         return `<div class="g-item"><dt>${esc(g.term)}</dt><dd>${esc(g.def)}</dd><dd><a href="#${m.id}">Module ${m.code} · ${esc(m.title)}</a></dd></div>`;
@@ -928,9 +1134,9 @@
       .join("")}</dl>`).join("");
   }
   function viewGlossary() {
-    return spread(`${mast({ kicker: `${GLOSSARY.length} terms`, title: "Glossary", sub: "Market jargon, defined plainly." })}
+    return spread(`${mast({ kicker: `${GLOSSARY.length} terms`, title: "Glossary", sub: "Market jargon, defined plainly. Search also finds the lessons that explain each idea." })}
     <nav class="wrap letters spread-only" aria-label="Jump to a letter">${LETTERS.map((L) => `<button type="button" data-act="jump" data-l="${L}">${L}</button>`).join("")}</nav>`, `<div class="wrap">
-      <div class="search"><div class="search-box">${icon("search")}<input id="gloss-q" type="search" data-in="gloss" placeholder="Search terms and definitions" value="${esc(glossQ)}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" aria-label="Search the glossary"></div></div>
+      <div class="search"><div class="search-box">${icon("search")}<input id="gloss-q" type="search" data-in="gloss" placeholder="Search terms and lessons" value="${esc(glossQ)}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" aria-label="Search the glossary"></div></div>
       <div id="gloss-list">${glossList(glossQ)}</div>
     </div>`, true);
   }
@@ -1178,10 +1384,10 @@
       <div class="panel">
         <div class="cor"><div><b>${pct(cor)}</b><small>Combined ratio</small></div><span class="verdict ${uw >= 0 ? "good" : "bad"}">${uw >= 0 ? "Underwriting profit" : "Underwriting loss"} ${fmtM(Math.abs(uw))}</span></div>
         <div class="barchart" aria-hidden="true">
-          <div class="bar"><div class="bar-fill"><span style="width:${(lrW / SCALE) * 100}%;background:var(--tint)"></span><span style="width:${(erW / SCALE) * 100}%;background:var(--brass)"></span></div><span class="mark" style="left:calc(${(100 / SCALE) * 100}% - 1px)"></span></div>
+          <div class="bar"><div class="bar-fill"><span style="width:${(lrW / SCALE) * 100}%;background:var(--c1)"></span><span style="width:${(erW / SCALE) * 100}%;background:var(--c2)"></span></div><span class="mark" style="left:calc(${(100 / SCALE) * 100}% - 1px)"></span></div>
           <div class="bar-label"><span>0%</span><span>100%</span><span>150%</span></div>
         </div>
-        <div class="legend"><span><i class="swatch" style="background:var(--tint)"></i>Loss ratio ${pct(lr)}</span><span><i class="swatch" style="background:var(--brass)"></i>Expense ratio ${pct(er)}</span></div>
+        <div class="legend"><span><i class="swatch" style="background:var(--c1)"></i>Loss ratio ${pct(lr)}</span><span><i class="swatch" style="background:var(--c2)"></i>Expense ratio ${pct(er)}</span></div>
       </div>
       ${note}
       <div class="table-wrap"><table class="num-table">
@@ -1246,7 +1452,12 @@
       if (it.pick !== null) return;
       it.pick = +el.dataset.i;
       S.qa.n++;
-      if (it.opts[it.pick].ok) S.qa.c++;
+      if (it.opts[it.pick].ok) {
+        S.qa.c++;
+        delete S.missed[it.q.qid];
+      } else {
+        S.missed[it.q.qid] = 1;
+      }
       touch();
       save();
       rerender(true);
@@ -1301,10 +1512,17 @@
       const y = target.getBoundingClientRect().top + window.scrollY - (bar ? bar.offsetHeight : 0) - inset;
       window.scrollTo({ top: Math.max(0, y), behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
     },
+    textsize(el) {
+      S.text = el.dataset.size;
+      save();
+      applyTextSize();
+      document.querySelectorAll('[data-act="textsize"]').forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.size === S.text)));
+    },
     reset(el) {
       if (el.dataset.armed) {
         S = blank();
         save();
+        applyTextSize();
         quizRun = null;
         cardRun = null;
         rerender(false);
