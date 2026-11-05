@@ -1763,5 +1763,268 @@ window.SLIP_DATA = window.SLIP_DATA || {};
     }
   };
 
+  /* ---------------------------------------------------------------- m14 */
+  X["large-numbers"] = {
+    title: "Why big books are steadier",
+    blurb: "Add independent risks and watch the range of results narrow, unless they share a coastline.",
+    ask: "Each risk has a 2% chance of a total loss and is priced for a 60% loss ratio. Add more risks to the book and see the range of loss ratios you might get in a good or bad year (1 in 20 either way). Then put them all on the same coastline.",
+    inputs: [
+      { k: "n", label: "Risks in the book", values: [1, 10, 50, 100, 500, 1000, 5000, 20000], value: 100, show: (x) => x.toLocaleString("en-GB") },
+      { k: "same", label: "Are the risks independent?", min: 0, max: 1, step: 1, value: 0, show: (x) => (x ? "Same coastline" : "Independent") }
+    ],
+    presets: [
+      { label: "A handful", v: { n: 10, same: 0 } },
+      { label: "Thousands, spread out", v: { n: 5000, same: 0 } },
+      { label: "Thousands, one coast", v: { n: 5000, same: 1 } }
+    ],
+    compute(v) {
+      if (v.n === 1) {
+        return {
+          readouts: [["Good year", "0%"], ["Bad year", "3,000%", "bad"]],
+          chart: { type: "bars", scale: 200, suffix: "%", ticks: [0, 60, 100, 200], mark: [60, "Expected 60%"], rows: [{ label: "One risk: all or nothing", total: "0% or 3,000%", segs: [[200, "", "hatch"]] }] },
+          insight: `With one risk, the result is all or nothing: either no claim, a 0% loss ratio, or a total loss, **3,000%**. The 60% expected loss ratio never actually happens. That is why no insurer can live on a single risk.`
+        };
+      }
+      const c = v.same ? 0.02 : 0;
+      const sd = 420 * Math.sqrt((1 - c) / v.n + c);
+      const lo = Math.max(0, 60 - 1.645 * sd), hi = 60 + 1.645 * sd;
+      const shownHi = Math.min(hi, 200);
+      const insight = v.same
+        ? `On the same coastline the risks fail together, so adding more of them stops helping: the bad-year loss ratio stays around **${Math.round(hi)}%** however big the book gets. That is accumulation, and it is why spreading risk matters as much as having lots of it.`
+        : `With ${v.n.toLocaleString("en-GB")} independent risks, a bad year (1 in 20) comes in around **${Math.round(hi)}%** and a good one around ${Math.round(lo)}%. Quadruple the book and the spread halves: the law of large numbers. Volatility falls with the square root of the number of risks, but only if they really are independent.`;
+      return {
+        readouts: [["Good year (1 in 20)", `${Math.round(lo)}%`, "good"], ["Bad year (1 in 20)", `${Math.round(hi)}%`, hi > 100 ? "bad" : ""]],
+        chart: {
+          type: "bars",
+          scale: 200,
+          suffix: "%",
+          ticks: [0, 100, 200],
+          mark: [60, "Expected 60%"],
+          rows: [{ label: "Likely range of the loss ratio", total: `${Math.round(lo)}% to ${hi > 200 ? `${Math.round(hi)}% (off the scale)` : `${Math.round(hi)}%`}`, segs: [[lo, "", "none"], [shownHi - lo, "", v.same ? "c2" : "c1"]] }]
+        },
+        insight
+      };
+    }
+  };
+
+  X["rate-index"] = {
+    title: "Rates compound, and so does inflation",
+    blurb: "Set four years of rate changes against claims inflation and watch the margin.",
+    ask: "A class ran at a 60% loss ratio four years ago. Set the rate change in each year since, and the claims inflation, and see whether prices have really kept up.",
+    inputs: [
+      { k: "a", label: "Year 1 rate change", min: -10, max: 20, step: 1, value: 10, show: (x) => `${x > 0 ? "+" : x < 0 ? "−" : ""}${Math.abs(x)}%` },
+      { k: "b", label: "Year 2", min: -10, max: 20, step: 1, value: 8, show: (x) => `${x > 0 ? "+" : x < 0 ? "−" : ""}${Math.abs(x)}%` },
+      { k: "c", label: "Year 3", min: -10, max: 20, step: 1, value: -5, show: (x) => `${x > 0 ? "+" : x < 0 ? "−" : ""}${Math.abs(x)}%` },
+      { k: "d", label: "Year 4", min: -10, max: 20, step: 1, value: -3, show: (x) => `${x > 0 ? "+" : x < 0 ? "−" : ""}${Math.abs(x)}%` },
+      { k: "inf", label: "Claims inflation a year", min: 0, max: 10, step: 1, value: 5, unit: "pct" }
+    ],
+    compute(v) {
+      const ch = [v.a, v.b, v.c, v.d];
+      let ri = 100;
+      const rate = [[0, 100]], cost = [[0, 100]];
+      ch.forEach((x, i) => { ri *= 1 + x / 100; rate.push([i + 1, r1(ri)]); cost.push([i + 1, r1(100 * Math.pow(1 + v.inf / 100, i + 1))]); });
+      const ci = 100 * Math.pow(1 + v.inf / 100, 4);
+      const lr = (60 * ci) / ri;
+      const sum = ch.reduce((x, y) => x + y, 0);
+      const ymin = Math.floor(Math.min(...rate.map((p) => p[1]), 100) / 10) * 10 - 10;
+      const ymax = Math.ceil(Math.max(...rate.map((p) => p[1]), ci) / 10) * 10 + 10;
+      const insight = `Compounded, rates have moved **${r1(ri - 100) >= 0 ? "+" : ""}${r1(ri - 100)}%**, not the ${sum >= 0 ? "+" : ""}${sum}% you get by adding the changes up. Meanwhile claims costs have risen ${r1(ci - 100)}%.\n\nSo the 60% loss ratio is now about **${r1(lr)}%**. ${lr > 61 ? "Despite the early rate rises, inflation has overtaken them: the class is less profitable than four years ago." : lr < 59 ? "Rates have outrun inflation, so margins have genuinely improved." : "Rates have only just kept pace with inflation."}`;
+      return {
+        readouts: [["Rates, compounded", `${ri >= 100 ? "+" : "−"}${r1(Math.abs(ri - 100))}%`], ["Claims costs", `+${r1(ci - 100)}%`], ["Loss ratio now", `${r1(lr)}%`, lr > 61 ? "bad" : lr < 59 ? "good" : ""]],
+        chart: {
+          type: "line",
+          title: "Rate index against claims cost index",
+          height: 200,
+          x: { min: 0, max: 4, ticks: [0, 1, 2, 3, 4], suffix: "", title: "Years" },
+          y: { min: ymin, max: ymax, ticks: [ymin, 100, ymax], title: "Index (start = 100)" },
+          series: [
+            { name: "Rate index", tone: "c1", points: rate },
+            { name: "Claims cost index", tone: "c2", dash: true, points: cost }
+          ]
+        },
+        insight
+      };
+    }
+  };
+
+  X.technical = {
+    title: "Build a technical price",
+    blurb: "Change the expected loss and the capital a risk needs, and test the premium charged.",
+    ask: "Build a risk’s technical price from its expected loss and the capital it ties up, with expenses and margin taking 30% of the price. Then set the premium actually charged and read the price adequacy.",
+    inputs: [
+      { k: "el", label: "Expected loss", min: 40, max: 120, step: 5, value: 70, unit: "k" },
+      { k: "cap", label: "Capital the risk needs", min: 50, max: 400, step: 10, value: 150, unit: "k" },
+      { k: "coc", label: "Cost of capital", min: 5, max: 20, step: 1, value: 12, unit: "pct" },
+      { k: "act", label: "Premium actually charged", min: 60, max: 200, step: 5, value: 120, unit: "k" }
+    ],
+    compute(v) {
+      const charge = (v.cap * v.coc) / 100;
+      const tp = (v.el + charge) / 0.7;
+      const ex = tp - v.el - charge;
+      const at = (v.act / tp) * 100;
+      const scale = Math.max(tp, v.act) * 1.12;
+      const insight = `The technical price is **£${Math.round(tp)}k**: £${v.el}k of expected loss, £${Math.round(charge)}k for the capital the risk ties up, and £${Math.round(ex)}k of expenses and margin. Charging £${v.act}k puts the risk at **${Math.round(at)}% of technical**${at < 95 ? ", underpriced" : at > 105 ? ", comfortably priced" : ", about right"}.\n\nNotice the capital charge: two risks with the same expected loss can have very different technical prices if one is far more volatile, because it needs more capital.`;
+      return {
+        readouts: [["Technical price", `£${Math.round(tp)}k`], ["Actual ÷ technical", `${Math.round(at)}%`, at < 95 ? "bad" : at > 105 ? "good" : ""]],
+        chart: {
+          type: "bars",
+          scale,
+          prefix: "£",
+          suffix: "k",
+          mark: [tp, "Technical"],
+          rows: [
+            { label: "Technical price", total: `£${Math.round(tp)}k`, segs: [[v.el, "Expected loss", "c1"], [charge, "", "c3"], [ex, "", "c2"]] },
+            { label: "Premium charged", total: `£${v.act}k`, segs: [[v.act, "", at < 95 ? "hatch" : "c4"]] }
+          ],
+          legend: [["c1", "Expected loss"], ["c3", "Capital charge"], ["c2", "Expenses and margin"]]
+        },
+        insight
+      };
+    }
+  };
+
+  X.accumulation = {
+    title: "Fill up a hurricane zone",
+    blurb: "Write more in one coastal zone and watch the modelled loss approach its limit.",
+    ask: "An insurer writes property in three Gulf and Florida zones, with a limit of £150m modelled loss from one hurricane in each zone. Change how much it insures in each zone and how severe the hurricane is.",
+    inputs: [
+      { k: "a", label: "Sum insured in zone A, Miami", min: 0, max: 1500, step: 50, value: 900, unit: "m" },
+      { k: "b", label: "Zone B, Tampa", min: 0, max: 1500, step: 50, value: 600, unit: "m" },
+      { k: "c", label: "Zone C, Houston", min: 0, max: 1500, step: 50, value: 400, unit: "m" },
+      { k: "dr", label: "Share of values a major hurricane destroys", min: 5, max: 30, step: 1, value: 15, unit: "pct" }
+    ],
+    compute(v, H) {
+      const zones = [["Zone A · Miami", v.a], ["Zone B · Tampa", v.b], ["Zone C · Houston", v.c]];
+      const L = 150;
+      const losses = zones.map(([n, si]) => [n, (si * v.dr) / 100, si]);
+      const over = losses.filter((z) => z[1] > L);
+      const worst = losses.reduce((a, b) => (b[1] > a[1] ? b : a));
+      const head = (L * 100) / v.dr - worst[2];
+      const insight = over.length
+        ? `A hurricane destroying ${v.dr}% of values would cost **${H.fmtM(worst[1])}** in ${worst[0].split(" · ")[1]}, over the £150m limit. ${over.length > 1 ? `${over.length} zones are over the limit.` : ""} The portfolio manager must stop writing there, buy more reinsurance or shed exposure, however good the individual risks look.`
+        : `The worst zone is ${worst[0].split(" · ")[1]}: ${H.fmtM(worst[1])} from one hurricane, within the £150m limit. At this severity there is room for about ${H.fmtM(Math.max(0, head))} more sum insured there.\n\nNotice how the limit binds per zone, not in total: risks spread across three cities are three smaller accumulations, not one big one.`;
+      return {
+        readouts: [["Worst zone loss", H.fmtM(worst[1]), worst[1] > L ? "bad" : ""], ["Zones over limit", String(over.length), over.length ? "bad" : "good"]],
+        chart: {
+          type: "bars",
+          scale: 300,
+          prefix: "£",
+          suffix: "m",
+          mark: [L, "Limit £150m"],
+          rows: losses.map(([n, l, si]) => ({ label: n, total: `${H.fmtM(l)} of ${H.fmtM(si)}`, segs: [[Math.min(l, 300), "", l > L ? "c2" : "c1"]] }))
+        },
+        insight
+      };
+    }
+  };
+
+  X.diversification = {
+    title: "The diversification benefit",
+    blurb: "Change how correlated two books are and watch the capital they need together.",
+    ask: "Two books each need capital on their own to survive a 1-in-200 year. Combine them, and change how closely their results move together.",
+    inputs: [
+      { k: "a", label: "Book A’s capital alone", min: 20, max: 100, step: 5, value: 50, unit: "m" },
+      { k: "b", label: "Book B’s capital alone", min: 20, max: 100, step: 5, value: 50, unit: "m" },
+      { k: "rho", label: "How closely they move together", min: 0, max: 100, step: 2.5, value: 12.5, unit: "pct" }
+    ],
+    presets: [
+      { label: "Ordinary year", v: { rho: 12.5 } },
+      { label: "An extreme year", v: { rho: 80 } },
+      { label: "Independent", v: { rho: 0 } }
+    ],
+    compute(v, H) {
+      const comb = Math.sqrt(v.a * v.a + v.b * v.b + (2 * v.rho * v.a * v.b) / 100);
+      const ben = v.a + v.b - comb;
+      const insight = `Separately the books need ${H.fmtM(v.a + v.b)}. Together they need **${H.fmtM(comb)}**, a diversification benefit of ${H.fmtM(ben)} (${Math.round((ben / (v.a + v.b)) * 100)}%).\n\n${v.rho >= 60 ? "Notice how little is saved when the books move together. In extreme events correlations jump, so the benefit you counted on in ordinary years can largely vanish exactly when you need it." : "Push the correlation up, as happens in a hurricane, a financial crisis or a pandemic, and watch the benefit shrink."}`;
+      return {
+        readouts: [["Together", H.fmtM(comb)], ["Benefit", H.fmtM(ben), ben > 1 ? "good" : ""], ["Saved", `${Math.round((ben / (v.a + v.b)) * 100)}%`]],
+        chart: {
+          type: "bars",
+          scale: v.a + v.b,
+          prefix: "£",
+          suffix: "m",
+          rows: [
+            { label: "Separately", total: H.fmtM(v.a + v.b), segs: [[v.a, "A", "c1"], [v.b, "B", "c2"]] },
+            { label: "Together", total: H.fmtM(comb), segs: [[comb, "Combined", "c1m"], [ben, "", "hatch"]] }
+          ],
+          legend: [["c1m", "Capital needed together"], ["hatch", "Diversification benefit"]]
+        },
+        insight
+      };
+    }
+  };
+
+  X.matrix = {
+    title: "Steer the portfolio matrix",
+    blurb: "Push rates up on a fast-growing, underpriced segment and watch it move quadrant.",
+    ask: "Four segments sit on the matrix by price adequacy and growth. Liability is underpriced and growing fast. Put rates up on liability, and across the whole book, and see where everything moves (assume each point of rate costs about 1.2 points of growth).",
+    inputs: [
+      { k: "rc", label: "Rate rise on liability", min: 0, max: 25, step: 1, value: 0, unit: "pct" },
+      { k: "ra", label: "Rate rise across the book", min: 0, max: 10, step: 1, value: 0, unit: "pct" }
+    ],
+    presets: [
+      { label: "Do nothing", v: { rc: 0, ra: 0 } },
+      { label: "Fix liability", v: { rc: 18, ra: 0 } }
+    ],
+    compute(v) {
+      const segs = [["Cargo", 112, 10], ["Property", 104, -6], ["Liability", 86, 22], ["Cyber", 82, -12]];
+      const pts = segs.map(([n, x, y]) => {
+        const r = v.ra + (n === "Liability" ? v.rc : 0);
+        return { label: n, x: r1(Math.min(129, x * (1 + r / 100))), y: r1(Math.max(-29, y - 1.2 * r)) };
+      });
+      const lia = pts[2];
+      const danger = pts.filter((p) => p.x < 100 && p.y > 0).length;
+      pts.forEach((p) => { p.dx = 9; p.dy = 4; p.anchor = "start"; if (p.x > 118) { p.dx = -9; p.anchor = "end"; } p.tone = p.x < 100 && p.y > 0 ? "c2" : "c1"; });
+      const insight = lia.x < 100 && lia.y > 0
+        ? `Liability sits at ${Math.round(lia.x)}% of technical and growing ${Math.round(lia.y)}% a year: the **danger quadrant**. Its growth is almost certainly coming from underpricing. Push its rates up and watch it move.`
+        : `Liability is now at ${Math.round(lia.x)}% of technical, ${lia.y > 0 ? `still growing ${Math.round(lia.y)}%` : `shrinking ${Math.round(-lia.y)}%`}. ${lia.x >= 100 ? "It has left the danger quadrant, at the cost of some volume, which is exactly the trade a portfolio manager should accept." : "Better priced, but still below technical: it needs more, or remediation."}`;
+      return {
+        readouts: [["Liability adequacy", `${Math.round(lia.x)}%`, lia.x < 100 ? "bad" : "good"], ["Liability growth", `${lia.y >= 0 ? "+" : "−"}${Math.round(Math.abs(lia.y))}%`], ["In danger quadrant", String(danger), danger ? "bad" : "good"]],
+        chart: {
+          type: "quadrant",
+          title: "Segments by price adequacy and growth",
+          x: { min: 70, max: 130, split: 100, ticks: [70, 85, 100, 115, 130], suffix: "%", title: "Actual ÷ technical price" },
+          y: { min: -30, max: 30, split: 0, ticks: [-30, -15, 0, 15, 30], suffix: "%", title: "Premium growth" },
+          quadrants: { tl: "Danger", tr: "Keep going", bl: "Fix or exit", br: "Win more" },
+          points: pts
+        },
+        insight
+      };
+    }
+  };
+
+  X["reinsurance-value"] = {
+    title: "Is the reinsurance worth it?",
+    blurb: "Weigh the reinsurer’s margin against the value of the capital it frees.",
+    ask: "A reinsurance programme costs more than it is expected to recover: that’s the reinsurer’s margin. But it also cuts the capital the business needs. Change the margin, the capital released and the cost of capital.",
+    inputs: [
+      { k: "m", label: "Reinsurer’s margin a year", min: 0, max: 30, step: 1, value: 10, unit: "m" },
+      { k: "cap", label: "Capital released", min: 0, max: 150, step: 5, value: 80, unit: "m" },
+      { k: "coc", label: "Cost of capital", min: 5, max: 20, step: 1, value: 15, unit: "pct" }
+    ],
+    compute(v, H) {
+      const val = (v.cap * v.coc) / 100;
+      const net = val - v.m;
+      const scale = Math.max(v.m, val, 1) * 1.15;
+      const insight = net >= 0
+        ? `The capital released is worth **${H.fmtM(val)} a year** at a ${v.coc}% cost of capital, more than the ${H.fmtM(v.m)} margin the reinsurer earns. The reinsurance is cheaper than holding the capital: worth buying, provided the reinsurers are strong enough to pay.`
+        : `The capital released is worth only ${H.fmtM(val)} a year, less than the ${H.fmtM(v.m)} margin. On capital grounds alone, it would be cheaper to hold the capital and keep the risk, unless the reinsurance is needed to stay within appetite.`;
+      return {
+        readouts: [["Value of capital", H.fmtM(val)], ["Net benefit", `${net >= 0 ? "+" : "−"}${H.fmtM(Math.abs(net))}`, net >= 0 ? "good" : "bad"]],
+        chart: {
+          type: "bars",
+          scale,
+          prefix: "£",
+          suffix: "m",
+          rows: [
+            { label: "Reinsurer’s margin", total: H.fmtM(v.m), segs: [[v.m, "", "c2"]] },
+            { label: "Value of capital released", total: H.fmtM(val), segs: [[val, "", "c1"]] }
+          ]
+        },
+        insight
+      };
+    }
+  };
+
   window.SLIP_DATA.explore = Object.assign(window.SLIP_DATA.explore || {}, X);
 })();

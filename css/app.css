@@ -1007,6 +1007,7 @@ h1, h2, h3 { text-wrap: balance; }
 .s-open, .s-c1l { background: color-mix(in srgb, var(--c1) 30%, var(--card)); color: var(--ink); }
 .s-total { background: var(--ink-2); color: var(--paper); }
 .s-idle { background: var(--sunk); box-shadow: inset 0 0 0 1px var(--rule-strong); }
+.s-none { background: transparent; box-shadow: none; }
 .s-hatch { background: repeating-linear-gradient(-45deg, var(--sunk) 0 6px, var(--rule) 6px 7px); }
 .fig-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12.5px; color: var(--ink-2); }
 .fig-legend span { display: inline-flex; align-items: center; gap: 6px; }
