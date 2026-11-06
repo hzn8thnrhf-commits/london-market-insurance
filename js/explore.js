@@ -2252,5 +2252,70 @@ window.SLIP_DATA = window.SLIP_DATA || {};
     }
   };
 
+  /* ---------------------------------------------------------------- m11 */
+  X.rekeying = {
+    title: "Enter it once",
+    blurb: "Re-key the same contract data several times and count the errors.",
+    ask: "Each time someone types a contract’s details into another system, there’s a small chance of a mistake. Change how many times the data is re-keyed and the error rate, and compare with entering it once.",
+    inputs: [
+      { k: "k", label: "Times the same data is typed", min: 1, max: 6, step: 1, value: 4 },
+      { k: "e", label: "Chance of an error each time", min: 0.5, max: 5, step: 0.5, value: 2, unit: "pct" }
+    ],
+    compute(v) {
+      const p = 1 - Math.pow(1 - v.e / 100, v.k);
+      const once = v.e / 100;
+      const n = 10000;
+      const insight = `Typed ${v.k} time${v.k === 1 ? "" : "s"} at a ${pc(v.e)} error rate, **${r1(p * 100)}% of contracts** end up with at least one mistake: about ${Math.round(p * n).toLocaleString("en-GB")} in every 10,000. Entered once and reused, as the Core Data Record intends, it would be ${Math.round(once * n).toLocaleString("en-GB")}.\n\nEvery error means a query, a delay in paying premium or a claim, and staff time to fix it. That is where the cost of re-keying really lies.`;
+      return {
+        readouts: [["Contracts with an error", `${r1(p * 100)}%`, p > once * 1.5 ? "bad" : ""], ["If entered once", `${r1(once * 100)}%`, "good"]],
+        chart: {
+          type: "bars",
+          scale: 30,
+          suffix: "%",
+          ticks: [0, 10, 20, 30],
+          rows: [
+            { label: `Re-keyed ${v.k} times`, total: `${Math.round(p * n).toLocaleString("en-GB")} in 10,000`, segs: [[Math.min(30, p * 100), "", "c2"]] },
+            { label: "Entered once", total: `${Math.round(once * n).toLocaleString("en-GB")} in 10,000`, segs: [[once * 100, "", "c1"]] }
+          ]
+        },
+        insight
+      };
+    }
+  };
+
+  X["climate-cost"] = {
+    title: "A changing climate and the price of cover",
+    blurb: "Make catastrophes more frequent and severe, and see what rates must do to keep up.",
+    ask: "A property book earns £100m of premium, with a £20m catastrophe load, £45m of other claims and 30% expenses: a 95% combined ratio. Make catastrophes more frequent and more severe, and set the rate rise the market achieves.",
+    inputs: [
+      { k: "f", label: "More frequent catastrophes", min: 0, max: 50, step: 5, value: 20, show: (x) => `+${x}%` },
+      { k: "s", label: "More severe catastrophes", min: 0, max: 30, step: 5, value: 10, show: (x) => `+${x}%` },
+      { k: "r", label: "Rate rise achieved", min: 0, max: 40, step: 1, value: 5, show: (x) => `+${x}%` }
+    ],
+    compute(v, H) {
+      const aal = 20 * (1 + v.f / 100) * (1 + v.s / 100);
+      const P = 100 * (1 + v.r / 100);
+      const cor = ((45 + aal) / P + 0.3) * 100;
+      const need = ((45 + aal) / 0.65 / 100 - 1) * 100;
+      const insight = `The catastrophe load rises from £20m to **${gbp(aal)}**. To hold a 95% combined ratio, rates would need to rise about **${r1(need)}%**. With ${v.r}% achieved, the combined ratio is ${r1(cor)}%.\n\n${v.r < need - 0.5 ? "Prices are lagging the risk: insurers either lose money or pull back capacity. And if prices do catch up, some clients can no longer afford cover, which widens the protection gap. That squeeze is the market’s climate dilemma." : "Prices have kept up with the risk, but notice the cost: clients are paying much more for the same cover, and some will buy less of it, widening the protection gap."}`;
+      return {
+        readouts: [["Catastrophe load", gbp(aal)], ["Rate rise needed", `+${r1(need)}%`], ["Combined ratio", `${r1(cor)}%`, cor > 100 ? "bad" : cor <= 95.5 ? "good" : ""]],
+        chart: {
+          type: "bars",
+          scale: 140,
+          prefix: "£",
+          suffix: "m",
+          mark: [P, `Premium ${gbp(P)}`],
+          rows: [
+            { label: "Costs before", total: "£95m", segs: [[45, "Claims", "c1"], [20, "Cat", "c2"], [30, "Expenses", "neutral"]] },
+            { label: "Costs now", total: gbp(45 + aal + 0.3 * P), segs: [[45, "Claims", "c1"], [aal, "Cat", "c2"], [0.3 * P, "Expenses", "neutral"]] }
+          ],
+          legend: [["c1", "Other claims"], ["c2", "Catastrophe load"], ["neutral", "Expenses"]]
+        },
+        insight
+      };
+    }
+  };
+
   window.SLIP_DATA.explore = Object.assign(window.SLIP_DATA.explore || {}, X);
 })();

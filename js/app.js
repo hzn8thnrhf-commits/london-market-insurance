@@ -29,20 +29,8 @@
     });
   });
 
-  const plainBlock = (b) => {
-    if (typeof b === "string") return b;
-    if (b.h) return b.h;
-    if (b.ul || b.ol) return (b.ul || b.ol).join(" ");
-    if (b.terms) return b.terms.map((t) => t.join(" ")).join(" ");
-    if (b.example) return `${b.example.title || ""} ${b.example.text}`;
-    if (b.think) return `${b.think.q} ${b.think.a}`;
-    if (b.table) return b.table.rows.map((r) => r.join(" ")).join(" ");
-    if (b.timeline || b.chain) return (b.timeline || b.chain).map((t) => t.join(" ")).join(" ");
-    return b.analogy || b.note || b.aware || b.text || "";
-  };
-  /* plain text of a lesson, for search: the old prose format or the diagram format */
+  /* plain text of a lesson, for search */
   const lessonText = (l) => {
-    if (l.body) return `${l.title}. ${l.body.map(plainBlock).join(" ")} ${l.takeaways.join(" ")}`;
     const ds = [].concat(l.diagram || []);
     const parts = ds.flatMap((d) => [
       d.intro || "",
@@ -214,7 +202,6 @@
     });
     const y = !v.lesson && !v.top && scrollMem[h] ? scrollMem[h] : 0;
     window.scrollTo(0, y);
-    updateReadbar();
     placeX();
     drawFigures();
   }
@@ -225,7 +212,6 @@
     app.innerHTML = resolve(current).html();
     updateBack();
     window.scrollTo(0, keepScroll ? y : 0);
-    updateReadbar();
     placeX();
     drawFigures();
   }
@@ -428,49 +414,10 @@
   }
 
   /* ---------------------------------------------------------------- lesson */
-  function block(b) {
-    if (typeof b === "string") return `<p>${fmt(b)}</p>`;
-    if (b.fig) return `<div class="fig-inline">${figureHTML(b.fig)}</div>`;
-    if (b.h) return `<h2>${fmt(b.h)}</h2>`;
-    if (b.ul) return `<ul>${b.ul.map((x) => `<li>${fmt(x)}</li>`).join("")}</ul>`;
-    if (b.ol) return `<ol>${b.ol.map((x) => `<li><span>${fmt(x)}</span></li>`).join("")}</ol>`;
-    if (b.terms) return `<dl class="terms">${b.terms.map(([t, d]) => `<div><dt>${fmt(t)}</dt><dd>${fmt(d)}</dd></div>`).join("")}</dl>`;
-    if (b.analogy) return `<aside class="callout analogy"><div class="callout-label"><span class="glyph" aria-hidden="true">≈</span>Think of it like this</div><p>${fmt(b.analogy)}</p></aside>`;
-    if (b.example) return `<aside class="callout example"><div class="callout-label">${esc(b.example.title || "Worked example")}</div><p>${fmt(b.example.text)}</p></aside>`;
-    if (b.note) return `<aside class="callout note"><div class="callout-label">In practice</div><p>${fmt(b.note)}</p></aside>`;
-    if (b.aware) return `<aside class="callout aware"><div class="callout-label">Be aware</div><p>${fmt(b.aware)}</p></aside>`;
-    if (b.think) {
-      return `<details class="callout think"><summary><span class="callout-label">Consider this</span><span class="think-q">${fmt(b.think.q)}</span><span class="think-cta">Show the answer</span></summary><p>${fmt(b.think.a)}</p></details>`;
-    }
-    if (b.table) {
-      const { head, rows } = b.table;
-      return `<div class="table-wrap"><table><thead><tr>${head.map((h) => `<th scope="col">${fmt(h)}</th>`).join("")}</tr></thead><tbody>${rows
-        .map((r) => `<tr>${r.map((c) => `<td>${fmt(c)}</td>`).join("")}</tr>`)
-        .join("")}</tbody></table></div>`;
-    }
-    if (b.timeline) return `<ul class="timeline">${b.timeline.map(([y, t]) => `<li><b>${esc(y)}</b><span>${fmt(t)}</span></li>`).join("")}</ul>`;
-    if (b.chain) {
-      return `<div class="chain" role="list">${b.chain
-        .map(([t, d], i) => `${i ? '<span class="chain-joint" aria-hidden="true"></span>' : ""}<div class="chain-link" role="listitem"><span class="n">${i + 1}</span><div><h4>${fmt(t)}</h4><p>${fmt(d)}</p></div></div>`)
-        .join("")}</div>`;
-    }
-    if (b.lab) {
-      const ico = { slip: "slip", tower: "tower", ratio: "ratio" }[b.lab];
-      return `<a class="lab-link" href="#lab-${b.lab}"><span class="ico">${icon(ico)}</span><span>${fmt(b.text)}</span>${chev}</a>`;
-    }
-    return "";
-  }
 
 
   /* ---------------------------------------------------------------- figures */
   const FIGS = DATA.figures || {};
-  const FIGNUM = {};
-  MODULES.forEach((m) => {
-    let n = 0;
-    m.lessons.forEach((l) => (l.body || []).forEach((b) => {
-      if (b && b.fig && FIGS[b.fig]) FIGNUM[b.fig] = `${parseInt(m.code, 10)}.${++n}`;
-    }));
-  });
 
   const legendHTML = (items) =>
     items ? `<div class="fig-legend">${items.map(([tone, t]) => `<span><i class="sw s-${tone}"></i>${esc(t)}</span>`).join("")}</div>` : "";
@@ -644,11 +591,6 @@
     return `<div class="fig chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(spec.title)}">${g}</svg></div>`;
   }
 
-  function figureHTML(id) {
-    const spec = FIGS[id];
-    if (!spec) return "";
-    return `<figure class="figure"><div class="fig-head"><span>Figure ${FIGNUM[id] || ""}</span>${esc(spec.title)}</div>${figBody(id, spec)}<figcaption class="fig-caption">${esc(spec.caption)}</figcaption></figure>`;
-  }
 
   /* arrows between boxes, measured after layout */
   const NORM = { t: [0, -1], b: [0, 1], l: [-1, 0], r: [1, 0] };
@@ -740,21 +682,7 @@
   /* ---------------------------------------------------------------- mind maps */
   const HUES = ["var(--tint)", "var(--brass)", "var(--stamp)", "var(--good)"];
 
-  function keyTerms(l) {
-    if (l.keys) return l.keys;
-    const out = [];
-    const add = (raw) => {
-      const t = raw.replace(/[.:,]$/, "").trim();
-      if (t.length > 2 && t.length <= 30 && !out.some((o) => o.toLowerCase() === t.toLowerCase())) out.push(t);
-    };
-    const scan = (str) => (str.match(/\*\*(.+?)\*\*/g) || []).forEach((m) => add(m.slice(2, -2)));
-    (l.body || []).forEach((b) => {
-      if (typeof b === "string") scan(b);
-      else if (b.terms) b.terms.forEach(([t]) => add(t));
-      else if (b.ul) b.ul.forEach(scan);
-    });
-    return out.slice(0, 4);
-  }
+  const keyTerms = (l) => l.keys || [];
 
   function mindmapHTML(root, items) {
     return `<div class="fig mm" data-kind="mm">
@@ -888,9 +816,7 @@
     return `<div class="stamp-slot"><span class="stamp big${animate ? " animate" : ""}"><strong>Learned</strong><span>${m.code}.${l.num} · ${fmtDate(t)}</span></span></div>${action}`;
   }
 
-  function viewLesson(l) {
-    return l.diagrams ? viewLessonDiagram(l) : viewLessonText(l);
-  }
+  const viewLesson = (l) => viewLessonDiagram(l);
 
   /* ---------------------------------------------------------------- diagram lessons
      A lesson is a set of scenes: one or more diagrams whose boxes and arrows open an
@@ -1079,7 +1005,7 @@
     const sc = scenesOf(l);
     const hide = (s) => (s.key === u.scene ? "" : " hidden");
     const tabs = (where) => (sc.length > 1
-      ? `<div class="scene-tabs ${where}" role="tablist" aria-label="Parts of this lesson">${sc.map((s) => `<button type="button" role="tab" data-act="scene" data-s="${s.key}" aria-selected="${s.key === u.scene}">${icon(s.d ? "diagram" : "sliders")}<span>${esc(s.name)}</span></button>`).join("")}</div>`
+      ? `<div class="scene-tabs ${where}${sc.length > 3 ? " many" : ""}" role="tablist" aria-label="Parts of this lesson">${sc.map((s) => `<button type="button" role="tab" data-act="scene" data-s="${s.key}" aria-selected="${s.key === u.scene}">${icon(s.d ? "diagram" : "sliders")}<span>${esc(s.name)}</span></button>`).join("")}</div>`
       : "");
     const stage = sc.map((s) => `<section class="scene" data-scene-of="${s.key}"${hide(s)}>${s.d
       ? `${phoneIntro(l, s.d)}<figure class="figure diagram">${s.d.title ? `<div class="fig-head">${esc(s.d.title)}</div>` : ""}${figBody(s.d.key, s.d)}</figure>`
@@ -1321,50 +1247,7 @@
     `<div class="wrap lesson-r">${xBlockHTML(id)}${home ? `<div class="stack"><a class="lab-link" href="#${home.id}"><span class="ico">${icon("diagram")}</span><span>The lesson behind it: ${esc(home.title)}</span>${chev}</a></div>` : ""}</div>`, "stage-page");
   }
 
-  function viewLessonText(l) {
-    const m = l.module;
-    const prev = LESSONS[l.order - 1];
-    const next = LESSONS[l.order + 1];
-    const figIds = l.body.filter((b) => b && b.fig && FIGS[b.fig]).map((b) => b.fig);
-    const sideFigs = figIds.length ? `<div class="wrap side-figs spread-only">${figIds.map(figureHTML).join("")}</div>` : "";
-    const outline = `<nav class="wrap outline spread-only" aria-label="Lessons in this module">
-      <h2 class="section-title">In this module</h2>
-      <div class="group">${m.lessons.map((x) => `<a class="row" href="#${x.id}" style="--sep:56px"${x === l ? ' aria-current="page"' : ""}><span class="check${S.done[x.id] ? " done" : ""}">${S.done[x.id] ? icon("check") : x.num}</span><span class="row-main"><span class="row-title">${esc(x.title)}</span><span class="row-meta">${x.minutes} min</span></span></a>`).join("")}<a class="row" href="#quiz-${m.id}" style="--sep:56px"><span class="check">Q</span><span class="row-main"><span class="row-title">Module quiz</span><span class="row-meta">${m.quiz.length} questions</span></span></a></div>
-    </nav>`;
-    return `<div class="readbar" id="readbar" aria-hidden="true"></div>
-    ${spread(`${mast({
-      back: m.id,
-      backLabel: `Module ${m.code}`,
-      kicker: `${esc(m.title)} · Lesson ${l.num} of ${m.lessons.length}`,
-      title: esc(l.title),
-      sub: `${l.minutes} minute read`,
-      extra: `<div class="mast-progress"><span style="width:${(l.num / m.lessons.length) * 100}%"></span></div>`
-    })}${sideFigs}${outline}`, `<article class="wrap">
-      <div class="prose">${l.body.map(block).join("")}</div>
-      <div class="stack">
-        <section class="takeaways"><h3>Key points</h3><ul>${l.takeaways.map((t) => `<li>${icon("check")}<span>${fmt(t)}</span></li>`).join("")}</ul></section>
-        <div class="complete" id="complete">${completeHTML(l, false)}</div>
-        <nav class="pager" aria-label="Lessons">
-          ${prev ? `<a href="#${prev.id}"><small>Previous</small><span>${esc(prev.title)}</span></a>` : ""}
-          ${next ? `<a class="next-link" href="#${next.id}"><small>Next lesson</small><span>${esc(next.title)}</span></a>` : ""}
-        </nav>
-      </div>
-    </article>`, sideFigs ? "has-figs" : false)}`;
-  }
 
-  let readTick = false;
-  function updateReadbar() {
-    const bar = document.getElementById("readbar");
-    if (!bar) return;
-    const max = document.documentElement.scrollHeight - window.innerHeight;
-    const p = max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 1;
-    bar.style.transform = `scaleX(${p})`;
-  }
-  window.addEventListener("scroll", () => {
-    if (readTick) return;
-    readTick = true;
-    requestAnimationFrame(() => { readTick = false; updateReadbar(); });
-  }, { passive: true });
 
   /* ---------------------------------------------------------------- quizzes */
   let quizRun = null;
