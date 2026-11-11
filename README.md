@@ -13,15 +13,16 @@ Every chapter ends with a five-line recap. Progress is saved on your device, and
 
 ## What it covers
 
-The course follows the three London Market syllabuses of the Chartered Insurance Institute, written afresh in plain English with its own examples.
+The course follows the three London Market syllabuses of the Chartered Insurance Institute, written afresh in plain English with its own examples, then applies them to one business: an MGA managing a portfolio for several carriers.
 
 | Part | Chapters |
 | --- | --- |
 | **LM1** · London Market insurance essentials | Risk and insurance · Legal principles · Classes of business and reinsurance · The insurance cycle · The London Market · Regulation · Sanctions, data and financial crime · Broking and placing |
 | **LM2** · Principles and practices | Reinsurance methods · Market security · Law, consumers and tax · Intermediaries · Underwriting · Conduct of business · Delegated underwriting · Claims |
-| **LM3** · Underwriting principles | The market framework · Contracts and wordings · Business planning · Pricing and exposure · Writing and distributing business |
+| **LM3** · Underwriting principles | The market framework · Contracts and wordings · Risk appetite and capital · Building the business plan · Reading the accounts · Statistics for underwriters · Pricing a risk · Exposure and accumulation · Writing and distributing business |
+| **MGA** · Portfolio management for an MGA | The MGA and its carriers · Managing the book across carriers · Reporting, renewal and resilience |
 
-In total: 21 chapters, 232 steps, 90 predict-first questions, 49 interactive models and a searchable glossary of 169 terms.
+In total: 28 chapters, 237 steps, 117 predict-first questions, 80 interactive models and a searchable glossary of 169 terms.
 
 ## Designed for the iPhone Duo
 
@@ -54,7 +55,7 @@ python3 -m http.server 8000
 | `index.html` | App shell and iOS home-screen metadata |
 | `css/app.css` | All styles, with light and dark themes |
 | `js/kit.js` | The small set of picture builders the chapters share: bars, columns, line plots, waterfalls, flow diagrams, stat tiles |
-| `js/chapters/c01.js` … `c21.js` | One file per chapter |
+| `js/chapters/c01.js` … `c28.js` | One file per chapter |
 | `js/glossary.js` | Glossary entries |
 | `js/app.js` | Routing, progress, the step player and the glossary |
 | `sw.js` | Service worker for offline use |
@@ -63,7 +64,7 @@ python3 -m http.server 8000
 
 ### Editing content
 
-A chapter has an `id`, a `part` (`LM1`, `LM2` or `LM3`), a `title`, a `blurb`, `minutes`, starting values for its controls in `init`, and a list of `steps`. Chapter ids key saved progress, so keep them stable.
+A chapter has an `id`, a `part` (`LM1`, `LM2`, `LM3` or `MGA`), a `title`, a `blurb`, `minutes`, starting values for its controls in `init`, and a list of `steps`. Chapter ids key saved progress, so keep them stable.
 
 A step has a heading `h`, text `say`, and a `scene` function that returns the picture for the current values. It may add an `ask` (question, options, the index of the right answer and the explanation), `ctl` (sliders with a range and step, or a set of options), and `live`, a sentence or two that changes with the controls. Text can use `**bold**` and `*italic*`, and a blank line starts a new paragraph.
 
@@ -71,4 +72,4 @@ When you change any app file, bump `VERSION` in `sw.js` so installed copies pick
 
 ## A note on accuracy
 
-The structure follows the CII study texts for LM1, LM2 and LM3; the words, examples and numbers are The Slip’s own, and figures in the models are invented to teach. Law and regulation change, and some limits and rates in older editions of the texts have since moved. The Slip is a learning aid, not legal or professional advice, and not a substitute for the current study text if you are sitting an exam.
+The structure of the first three parts follows the CII study texts for LM1, LM2 and LM3, and the MGA part goes beyond them; the words, examples and numbers are The Slip’s own, and figures in the models are invented to teach. Law and regulation change, and some limits and rates in older editions of the texts have since moved. The Slip is a learning aid, not legal or professional advice, and not a substitute for the current study text if you are sitting an exam.
