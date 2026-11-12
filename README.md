@@ -9,7 +9,7 @@ Each chapter is a short run of steps. A step makes one point: a few sentences, a
 - **Ask first.** A question you answer before the explanation appears, so you commit to a view and then see why it holds or doesn’t. Every question has three or four options built from real misconceptions, shown in a shuffled order. Pick a wrong one and you are told why *that* answer is wrong before seeing the right one. Some pictures change once you have answered.
 - **Let you move something.** A slider or switch wired to the picture, used only where changing a number is the clearest way to see the idea: how a pool of risks steadies as it grows, what a retention does to a bad year, why “1 in 200” is not “never”. Most come with a **challenge**: something to find with the controls, such as the least reinsurance that brings a loss inside appetite, which is ticked off with a comment when you get there.
 
-Every chapter ends with a five-line recap. Progress is saved on your device, and the home screen takes you back to where you stopped.
+Every chapter opens with its learning objectives and ends with a summary. The text is written to the standard of a university course: terms are defined when first used, rules are stated with their statutory or case authority where they have one, and each principle is followed by its reason and an example. Progress is saved on your device, and the home screen takes you back to where you stopped.
 
 ## What it covers
 
@@ -19,10 +19,10 @@ The course follows the three London Market syllabuses of the Chartered Insurance
 | --- | --- |
 | **LM1** · London Market insurance essentials | Risk and insurance · Legal principles · Classes of business and reinsurance · The insurance cycle · The London Market · Regulation · Sanctions, data and financial crime · Broking and placing |
 | **LM2** · Principles and practices | Reinsurance methods · Market security · Law, consumers and tax · Intermediaries · Underwriting · Conduct of business · Delegated underwriting · Claims |
-| **LM3** · Underwriting principles | The market framework · Contracts and wordings · Risk appetite and capital · Building the business plan · Reading the accounts · Statistics for underwriters · Pricing a risk · Exposure and accumulation · Writing and distributing business |
+| **LM3** · Underwriting principles | The market framework · Contracts and wordings · Risk appetite · Capital · Building the business plan · Reading the accounts · Statistics for underwriters · Pricing a risk · Exposure and accumulation · Writing and distributing business |
 | **MGA** · Portfolio management for an MGA | The MGA and its carriers · Managing the book across carriers · Reporting, renewal and resilience |
 
-In total: 28 chapters, 237 steps, 130 predict-first questions, 80 interactive models with 59 challenges and a searchable glossary of 169 terms.
+In total: 29 chapters, 251 steps, 137 predict-first questions, 88 interactive models with 64 challenges and a searchable glossary of 169 terms.
 
 ## Designed for the iPhone Duo
 
@@ -55,7 +55,7 @@ python3 -m http.server 8000
 | `index.html` | App shell and iOS home-screen metadata |
 | `css/app.css` | All styles, with light and dark themes |
 | `js/kit.js` | The small set of picture builders the chapters share: bars, columns, line plots, waterfalls, flow diagrams, stat tiles |
-| `js/chapters/c01.js` … `c28.js` | One file per chapter |
+| `js/chapters/c01.js` … `c29.js` | One file per chapter |
 | `js/glossary.js` | Glossary entries |
 | `js/app.js` | Routing, progress, the step player and the glossary |
 | `sw.js` | Service worker for offline use |
@@ -64,7 +64,7 @@ python3 -m http.server 8000
 
 ### Editing content
 
-A chapter has an `id`, a `part` (`LM1`, `LM2`, `LM3` or `MGA`), a `title`, a `blurb`, `minutes`, starting values for its controls in `init`, and a list of `steps`. Chapter ids key saved progress, so keep them stable.
+A chapter has an `id`, a `part` (`LM1`, `LM2`, `LM3` or `MGA`), a `title`, a `blurb`, `minutes`, a one-sentence `lead` and a list of `aims` (shown as the opening step), starting values for its controls in `init`, and a list of `steps`. Chapter ids key saved progress, so keep them stable.
 
 A step has a heading `h`, text `say`, and a `scene` function that returns the picture for the current values. It may add an `ask` (question, options, the index of the right answer and the explanation; an option can be `[text, why it is wrong]`, and `fix: true` keeps the options in the order written), `ctl` (sliders with a range and step, or a set of options), `goal` (a challenge with a `test` on the control values and text for before and after), and `live`, a sentence or two that changes with the controls. The `scene` receives `$done` once the question is answered, so a picture can reveal more. Text can use `**bold**` and `*italic*`, and a blank line starts a new paragraph.
 
