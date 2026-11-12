@@ -6,8 +6,8 @@ A step-by-step course in London Market insurance, built as an iPhone web app and
 
 Each chapter is a short run of steps. A step makes one point: a few sentences, and a picture that shows it. Most steps then do one of two things:
 
-- **Ask first.** A question you answer before the explanation appears, so you commit to a view and then see why it holds or doesn’t.
-- **Let you move something.** A slider or switch wired to the picture, used only where changing a number is the clearest way to see the idea: how a pool of risks steadies as it grows, what a retention does to a bad year, why “1 in 200” is not “never”.
+- **Ask first.** A question you answer before the explanation appears, so you commit to a view and then see why it holds or doesn’t. Every question has three or four options built from real misconceptions, shown in a shuffled order. Pick a wrong one and you are told why *that* answer is wrong before seeing the right one. Some pictures change once you have answered.
+- **Let you move something.** A slider or switch wired to the picture, used only where changing a number is the clearest way to see the idea: how a pool of risks steadies as it grows, what a retention does to a bad year, why “1 in 200” is not “never”. Most come with a **challenge**: something to find with the controls, such as the least reinsurance that brings a loss inside appetite, which is ticked off with a comment when you get there.
 
 Every chapter ends with a five-line recap. Progress is saved on your device, and the home screen takes you back to where you stopped.
 
@@ -22,7 +22,7 @@ The course follows the three London Market syllabuses of the Chartered Insurance
 | **LM3** · Underwriting principles | The market framework · Contracts and wordings · Risk appetite and capital · Building the business plan · Reading the accounts · Statistics for underwriters · Pricing a risk · Exposure and accumulation · Writing and distributing business |
 | **MGA** · Portfolio management for an MGA | The MGA and its carriers · Managing the book across carriers · Reporting, renewal and resilience |
 
-In total: 28 chapters, 237 steps, 117 predict-first questions, 80 interactive models and a searchable glossary of 169 terms.
+In total: 28 chapters, 237 steps, 130 predict-first questions, 80 interactive models with 59 challenges and a searchable glossary of 169 terms.
 
 ## Designed for the iPhone Duo
 
@@ -66,7 +66,7 @@ python3 -m http.server 8000
 
 A chapter has an `id`, a `part` (`LM1`, `LM2`, `LM3` or `MGA`), a `title`, a `blurb`, `minutes`, starting values for its controls in `init`, and a list of `steps`. Chapter ids key saved progress, so keep them stable.
 
-A step has a heading `h`, text `say`, and a `scene` function that returns the picture for the current values. It may add an `ask` (question, options, the index of the right answer and the explanation), `ctl` (sliders with a range and step, or a set of options), and `live`, a sentence or two that changes with the controls. Text can use `**bold**` and `*italic*`, and a blank line starts a new paragraph.
+A step has a heading `h`, text `say`, and a `scene` function that returns the picture for the current values. It may add an `ask` (question, options, the index of the right answer and the explanation; an option can be `[text, why it is wrong]`, and `fix: true` keeps the options in the order written), `ctl` (sliders with a range and step, or a set of options), `goal` (a challenge with a `test` on the control values and text for before and after), and `live`, a sentence or two that changes with the controls. The `scene` receives `$done` once the question is answered, so a picture can reveal more. Text can use `**bold**` and `*italic*`, and a blank line starts a new paragraph.
 
 When you change any app file, bump `VERSION` in `sw.js` so installed copies pick up the update.
 
